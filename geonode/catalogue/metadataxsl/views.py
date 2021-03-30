@@ -47,7 +47,7 @@ def prefix_xsl_line(req, id):
         if record:
             logger.debug(record.xml)
     except Exception:
-        logger.error(traceback.format_exc())
+        logger.debug(traceback.format_exc())
         msg = 'Could not connect to catalogue to save information for layer "%s"' % str(resource)
         return HttpResponse(
             msg
@@ -62,13 +62,15 @@ def prefix_xsl_line(req, id):
         if resource.metadata_uploaded and resource.metadata_uploaded_preserve:
             md_doc = etree.tostring(dlxml.fromstring(resource.metadata_xml))
         elif resource.is_published:
-            print("is_published do views do catalogue:")
-            print(resource.is_published)
+            #print("is_published do views do catalogue:")
+            #print(resource.is_published)
             md_doc = catalogue.catalogue.csw_gen_xml(resource, 'catalogue/full_metadata.xml')
+            #print("md_doc dentro do views do catalogue:")
+            #print(md_doc)
 
         xml = md_doc
     except Exception:
-        logger.error(traceback.format_exc())
+        logger.debug(traceback.format_exc())
         return HttpResponse(
             "Resource Metadata not available!"
         )

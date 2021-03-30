@@ -22,11 +22,6 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import authenticate, login, get_user_model
 from django.http import HttpResponse, HttpResponseRedirect
-
-# embrapa #
-
-# from django.http import JsonResponse
-
 from django.urls import reverse
 import json
 from django.db.models import Q
@@ -147,10 +142,7 @@ def ident_json(request):
 
 def h_keywords(request):
     from geonode.base.models import HierarchicalKeyword as hk
-
-    #print("Função h_keywords do views do Geonode: ")
-    keywords = json.dumps(hk.dump_bulk_tree())
-    #print(keywords)
+    keywords = json.dumps(hk.dump_bulk_tree(request.user, type=request.GET.get('type', None)))
     return HttpResponse(content=keywords)
 
 # Embrapa #

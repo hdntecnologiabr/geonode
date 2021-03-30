@@ -97,6 +97,8 @@ class CommonMetaApi:
                  'group': ALL_WITH_RELATIONS,
                  'owner': ALL_WITH_RELATIONS,
                  'date': ALL,
+                 'purpose': ALL,
+                 'abstract': ALL
                  }
     ordering = ['date', 'title', 'popular_count']
     max_limit = None
@@ -170,24 +172,34 @@ class CommonModelApi(ModelResource):
             orm_filters.update({'type': filters.getlist('type__in')})
         if 'extent' in filters:
             orm_filters.update({'extent': filters['extent']})
-        # Nothing returned if +'s are used instead of spaces for text search,
-        # so swap them out. Must be a better way of doing this?
-        for filter in orm_filters:
-            if filter in ['title__contains', 'q']:
-                orm_filters[filter] = orm_filters[filter].replace("+", " ")
+        orm_filters['f_method'] = filters['f_method'] if 'f_method' in filters else 'and'
+        if not settings.SEARCH_RESOURCES_EXTENDED:
+            return self._remove_additional_filters(orm_filters)
+        return orm_filters
+
+    def _remove_additional_filters(self, orm_filters):
+        orm_filters.pop('abstract__icontains', None)
+        orm_filters.pop('purpose__icontains', None)
+        orm_filters.pop('f_method', None)
         return orm_filters
 
     def apply_filters(self, request, applicable_filters):
         types = applicable_filters.pop('type', None)
         extent = applicable_filters.pop('extent', None)
         keywords = applicable_filters.pop('keywords__slug__in', None)
-        # embrapa #
+        filtering_method = applicable_filters.pop('f_method', 'and')
         embrapa_keywords = applicable_filters.pop('embrapa_keywords__slug__in', None)
-        semi_filtered = super(
-            CommonModelApi,
-            self).apply_filters(
-            request,
-            applicable_filters)
+        if filtering_method == 'or':
+            filters = Q()
+            for f in applicable_filters.items():
+                filters |= Q(f)
+            semi_filtered = self.get_object_list(request).filter(filters)
+        else:
+            semi_filtered = super(
+                CommonModelApi,
+                self).apply_filters(
+                request,
+                applicable_filters)
         filtered = None
         if types:
             for the_type in types:
@@ -288,19 +300,22 @@ class CommonModelApi(ModelResource):
         filtered = queryset.filter(Q(keywords__in=treeqs))
         return filtered
 
-    def filter_bbox(self, queryset, bbox):
-        """
-        modify the queryset q to limit to data that intersects with the
-        provided bbox
+    def filter_bbox(self, queryset, extent_filter):
+        from geonode.utils import bbox_to_projection
+        bbox = extent_filter.split(',')
+        bbox = list(map(str, bbox))
 
-        bbox - 4 tuple of floats representing 'southwest_lng,southwest_lat,
-        northeast_lng,northeast_lat'
-        returns the modified query
-        """
-        bbox = bbox.split(',')  # TODO: Why is this different when done through haystack?
-        bbox = list(map(str, bbox))  # 2.6 compat - float to decimal conversion
-        intersects = ~(Q(bbox_x0__gt=bbox[2]) | Q(bbox_x1__lt=bbox[0]) |
-                       Q(bbox_y0__gt=bbox[3]) | Q(bbox_y1__lt=bbox[1]))
+        intersects = (Q(bbox_x0__gte=bbox[0]) & Q(bbox_x1__lte=bbox[2]) &
+                      Q(bbox_y0__gte=bbox[1]) & Q(bbox_y1__lte=bbox[3]))
+
+        for proj in Layer.objects.order_by('srid').values('srid').distinct():
+            if proj['srid'] != 'EPSG:4326':
+                proj_bbox = bbox_to_projection(bbox + ['4326', ],
+                                               target_srid=int(proj['srid'][5:]))
+
+                if proj_bbox[-1] != 4326:
+                    intersects = intersects | (Q(bbox_x0__gte=proj_bbox[0]) & Q(bbox_x1__lte=proj_bbox[2]) & Q(
+                        bbox_y0__gte=proj_bbox[1]) & Q(bbox_y1__lte=proj_bbox[3]))
 
         return queryset.filter(intersects)
 
@@ -520,8 +535,6 @@ class CommonModelApi(ModelResource):
             filter_set_ids = filter_set.values_list('id')
             # Do the query using the filterset and the query term. Facet the
             # results
-
-            # embrapa #
             if len(filter_set) > 0:
                 sqs = sqs.filter(id__in=filter_set_ids).facet('type').facet('subtype').facet(
                     'owner') .facet('keywords').facet('regions').facet('category').facet('embrapa_keywords')
@@ -795,11 +808,6 @@ class LayerResource(CommonModelApi):
                     formatted_obj['group_name'] = obj.group
 
             formatted_obj['keywords'] = [k.name for k in obj.keywords.all()] if obj.keywords else []
-
-            # embrapa #
-
-            #formatted_obj['embrapa_keywords'] = [ek.name for ek in obj.embrapa_keywords.all()] if objects.embrapa_keywords else []
-
             formatted_obj['regions'] = [r.name for r in obj.regions.all()] if obj.regions else []
 
             # provide style information
@@ -852,8 +860,8 @@ class LayerResource(CommonModelApi):
         links = obj.link_set.all()
         if link_types:
             links = links.filter(link_type__in=link_types)
-        for l in links:
-            formatted_link = model_to_dict(l, fields=link_fields)
+        for lnk in links:
+            formatted_link = model_to_dict(lnk, fields=link_fields)
             dehydrated.append(formatted_link)
 
         return dehydrated
@@ -1002,11 +1010,6 @@ class MapResource(CommonModelApi):
                     formatted_obj['group_name'] = obj.group
 
             formatted_obj['keywords'] = [k.name for k in obj.keywords.all()] if obj.keywords else []
-
-            # embrapa #
-
-            #formatted_obj['embrapa_keywords'] = [ek.name for ek in obj.embrapa_keywords.all()] if obj.embrapa_keywords else[]
-
             formatted_obj['regions'] = [r.name for r in obj.regions.all()] if obj.regions else []
 
             if 'site_url' not in formatted_obj or len(formatted_obj['site_url']) == 0:
@@ -1087,11 +1090,6 @@ class DocumentResource(CommonModelApi):
                     formatted_obj['group_name'] = obj.group
 
             formatted_obj['keywords'] = [k.name for k in obj.keywords.all()] if obj.keywords else []
-
-            # embrapa #
-
-            #formatted_obj['embrapa_keywords'] = [ek.name for ek in obj.embrapa_keywords.all()] if obj.embrapa_keywords else []
-
             formatted_obj['regions'] = [r.name for r in obj.regions.all()] if obj.regions else []
 
             if 'site_url' not in formatted_obj or len(formatted_obj['site_url']) == 0:

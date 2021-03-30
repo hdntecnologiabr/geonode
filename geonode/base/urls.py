@@ -20,15 +20,13 @@
 
 
 from django.conf.urls import url
-from django.conf import settings
 
 from .views import (
     ResourceBaseAutocomplete, RegionAutocomplete,
-    HierarchicalKeywordAutocomplete, ThesaurusKeywordLabelAutocomplete, 
-    EmbrapaKeywordsAutocomplete, EmbrapaUnityAutocomplete, EmbrapaPurposeAutocomplete, EmbrapaDataQualityStatementAutocomplete,
+    HierarchicalKeywordAutocomplete, ThesaurusKeywordLabelAutocomplete, OwnerRightsRequestView,
+	EmbrapaKeywordsAutocomplete, EmbrapaUnityAutocomplete, EmbrapaPurposeAutocomplete, EmbrapaDataQualityStatementAutocomplete,
     EmbrapaAuthorsAutocomplete)
 
-from .models import Embrapa_Data_Quality_Statement
 
 urlpatterns = [
     url(
@@ -47,6 +45,11 @@ urlpatterns = [
         r'^autocomplete_hierachical_keyword/$',
         HierarchicalKeywordAutocomplete.as_view(),
         name='autocomplete_hierachical_keyword',
+    ),
+    url(
+        r'^thesaurus_autocomplete/$',
+        ThesaurusKeywordLabelAutocomplete.as_view(),
+        name='thesaurus_autocomplete',
     ),
     url(
         r'^autocomplete_embrapa_keywords/$',
@@ -73,17 +76,9 @@ urlpatterns = [
         EmbrapaAuthorsAutocomplete.as_view(),
         name='autocomplete_embrapa_autores',
     ),
+    url(
+        r'^resource_rights/(?P<pk>\d+)$',
+        OwnerRightsRequestView.as_view(),
+        name='owner_rights_request',
+    ) 
 ]
-
-#Adicionado a url do embrapa_keywords
-
-# Only register the url for thesuarus if it is enabled in settings
-if hasattr(settings, 'THESAURUS') and settings.THESAURUS:
-
-    urlpatterns.append(
-        url(
-        r'^thesaurus_autocomplete/$',
-        ThesaurusKeywordLabelAutocomplete.as_view(),
-        name='thesaurus_autocomplete',
-        ),
-    )

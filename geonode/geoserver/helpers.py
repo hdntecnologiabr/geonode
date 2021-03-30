@@ -17,30 +17,28 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 #########################################################################
-
-from collections import namedtuple, defaultdict
-import datetime
-from decimal import Decimal
+import os
+import re
+import sys
+import time
+import uuid
+# import base64
+import json
 import errno
-from itertools import cycle
+import logging
+import datetime
+import traceback
+
 from six import (
     string_types,
     reraise as raise_
 )
-import json
-import logging
-import traceback
-import os
+from itertools import cycle
+from decimal import Decimal
+from collections import namedtuple, defaultdict
 from os.path import basename, splitext, isfile
-import re
-import sys
 from threading import local
-import time
-import uuid
-# import base64
-
 from urllib.parse import urlencode, urlsplit, urljoin
-
 from pinax.ratings.models import OverallRating
 from bs4 import BeautifulSoup
 from dialogos.models import Comment
@@ -334,6 +332,7 @@ def fixup_style(cat, resource, style):
                 sld = style.read()
             logger.debug("Creating style [%s]", name)
             style = cat.create_style(name, sld, overwrite=True, raw=True, workspace=settings.DEFAULT_WORKSPACE)
+            cat.reset()
             style = cat.get_style(name, workspace=settings.DEFAULT_WORKSPACE) or cat.get_style(name)
             lyr.default_style = style
             logger.debug("Saving changes to %s", lyr)
@@ -370,6 +369,7 @@ def set_layer_style(saved_layer, title, sld, base_file=None):
         try:
             cat.create_style(
                 saved_layer.name, sld, overwrite=False, raw=True, workspace=saved_layer.workspace)
+            cat.reset()
             style = cat.get_style(saved_layer.name, workspace=saved_layer.workspace) or \
                 cat.get_style(saved_layer.name)
         except Exception as e:
@@ -381,6 +381,7 @@ def set_layer_style(saved_layer, title, sld, base_file=None):
         try:
             cat.create_style(saved_layer.name, sld, overwrite=True, raw=True,
                              workspace=saved_layer.workspace)
+            cat.reset()
             style = cat.get_style(saved_layer.name, workspace=saved_layer.workspace)
         except Exception as e:
             logger.exception(e)
@@ -698,7 +699,7 @@ def gs_slurp(
             # in some cases we need to explicitily save the resource to execute the signals
             # (for sure when running updatelayers)
             if execute_signals:
-                layer.save()
+                layer.save(notify=True)
 
             # Fix metadata links if the ip has changed
             if layer.link_set.metadata().count() > 0:
@@ -1106,6 +1107,7 @@ def set_styles(layer, gs_catalog):
                 sld_body = default_style.sld_body
                 try:
                     gs_catalog.create_style(layer.name, sld_body, raw=True, workspace=layer.workspace)
+                    gs_catalog.reset()
                 except Exception:
                     tb = traceback.format_exc()
                     logger.debug(tb)
@@ -1114,11 +1116,15 @@ def set_styles(layer, gs_catalog):
             else:
                 style = default_style
             if style:
-                layer.default_style = save_style(style, layer)
-                if layer.default_style not in style_set:
-                    style_set.append(layer.default_style)
-                gs_layer.default_style = style
-                gs_catalog.save(gs_layer)
+                try:
+                    layer.default_style = save_style(style, layer)
+                    if layer.default_style not in style_set:
+                        style_set.append(layer.default_style)
+                    gs_layer.default_style = style
+                    gs_catalog.save(gs_layer)
+                except Exception:
+                    tb = traceback.format_exc()
+                    logger.debug(tb)
 
         try:
             if gs_layer.styles:
@@ -1157,26 +1163,29 @@ def save_style(gs_style, layer):
         sld_body = gs_style.sld_body
         try:
             gs_catalog.create_style(gs_style.name, sld_body, raw=True, workspace=layer.workspace)
+            gs_catalog.reset()
+            gs_style = gs_catalog.get_style(gs_style.name, workspace=layer.workspace)
         except Exception:
             tb = traceback.format_exc()
             logger.debug(tb)
-            pass
-        style = gs_catalog.get_style(gs_style.name, workspace=layer.workspace)
 
-    style, created = Style.objects.get_or_create(name=gs_style.name)
-    if not style.workspace:
-        style.workspace = layer.workspace
-
+    style = None
     try:
-        style.sld_title = gs_style.sld_title or gs_style.sld_name
+        style, created = Style.objects.get_or_create(name=gs_style.name)
+        if style:
+            if not style.workspace and gs_style.workspace:
+                style.workspace = layer.workspace
+            style.sld_title = gs_style.sld_title or gs_style.sld_name
     except Exception:
         tb = traceback.format_exc()
         logger.debug(tb)
-        style.sld_title = gs_style.name
+        if style:
+            style.sld_title = gs_style.name
     finally:
-        style.sld_body = gs_style.sld_body
-        style.sld_url = gs_style.body_href
-        style.save()
+        if style:
+            style.sld_body = gs_style.sld_body
+            style.sld_url = gs_style.body_href
+            style.save()
     return style
 
 

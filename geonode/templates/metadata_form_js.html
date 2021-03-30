@@ -67,62 +67,28 @@
       $('#profileCompleteness .progress-bar').html(parseFloat(((completeness)*100).toFixed(0)) + ' %').width(parseFloat(((completeness)*100).toFixed(2)) + '%');
       $('#profileCompleteness .completed').toggle(completeness === 1);
       $('#profileCompleteness .not-completed').toggle(completeness !== 1);
-      var mandatoryMissing =  $('#mandatory').find('.input-empty:not([id^=autocomlete])').length > 0;
+      var mandatoryMissing = $('#mandatory').find('.input-empty:not([class^="select2"])').length > 0;
+          if (mandatoryMissing) {
+            var inputs = $('#mandatory').find('.input-empty:not([class^="select2"])');
+            var empty = inputs.length;
+            for (var i=0; i<inputs.length; i++) {
+              if (typeof inputs[i].value !== undefined && inputs[i].value !== '') {
+                empty--;
+              }
+            }
+            mandatoryMissing = empty > 0;
+          }
       var advancedMissing = $('#advanced').find('.input-empty').length > 0;
-      var mandatoryTotals = $('#mandatory').find('.input-empty:not([id^=autocomlete])').length;
-      var advancedTotals = $('#advanced').find('.input-empty').length;
-      //
-      for (let index = 0; index < $('#mandatory').find('.input-empty:not([id^=autocomlete])').length; index++) {
-          if ($('#mandatory').find('.input-empty:not([id^=autocomlete])')[index].type === 'search') {
-            //
-            const element = $('#mandatory').find('.input-empty:not([id^=autocomlete])')[0].parentElement.parentElement
-            //
-            var liCount = 0
-            for (let x = 0; x < element.childNodes.length; x++) {
-                //
-                if (element.childNodes[x].localName === 'li') {
-                    liCount++;
-                }
+          if (advancedMissing) {
+            var inputs = $('#advanced').find('.input-empty');
+            var empty = inputs.length;
+            for (var i=0; i<inputs.length; i++) {
+              if (typeof inputs[i].value !== undefined && inputs[i].value !== '') {
+                empty--;
+              }
             }
-            //
-            if (liCount > 1) {
-                mandatoryTotals--;
-            }
-          }   
-      }
-      //
-      if (mandatoryTotals === 0) {
-        mandatoryMissing = false
-      }
-      //
-      for (let index = 0; index < $('#advanced').find('.input-empty').length; index++) {
-          if ($('#advanced').find('.input-empty')[index].type === 'select-multiple') {
-            //
-            const element = $('#advanced').find('.input-empty')[0].parentElement.childNodes[6].childNodes[0].childNodes[0].childNodes[0]
-            //
-            var liCount = 0
-            //
-            for (let x = 0; x < element.childNodes.length; x++) {
-                //
-                if (element.childNodes[x].localName === 'li') {
-                    liCount++;
-                }
-            }
-            //
-            if (liCount > 0) {
-                advancedTotals--;
-            }
+            advancedMissing = empty > 0;
           }
-          else if ($('#advanced').find('.input-empty')[index].id === 'id_name_reference') {
-            //
-            advancedTotals--;
-          }
-      }
-      //
-      if (advancedTotals === 0) {
-        advancedMissing = false
-      }
-      //
       $('#completeness-hints .mandatory-hint')
         .toggleClass('progress-bar-danger', mandatoryMissing)
         .toggleClass('progress-bar-success', !mandatoryMissing)
@@ -208,8 +174,8 @@
             }});
 
         $('.external-popover').each(function(){
-                $(this).popover({'trigger':'hover'});
-            });
+            $(this).popover({'trigger':'hover'});
+        });
 
         $("#preview_image").show();
         $("#preview_map").hide();
@@ -221,7 +187,11 @@
             $(this).text(changeTxt.reverse()[0]);
             $("#preview_map, #preview_image").toggle(1000);
             $("#set_thumbnail").toggle();
+            {% if layer_form %}
             $('#preview_image_src').attr('src', '{{ layer_form.thumbnail_url.value }}');
+            {% elif map_form %}
+            $('#preview_image_src').attr('src', '{{ map_form.thumbnail_url.value }}');
+            {% endif %}
         });
     });
 
@@ -259,7 +229,6 @@
 
               // regions container
               $(target).closest('#regions_multiselect_container').toggleClass('has-error', empty);
-
               $(target).toggleClass("input-empty", empty);
           }
 
@@ -279,9 +248,8 @@
                 otherRestrictions = true;
             }
           } catch (err) {
-              otherRestrictions = false;
+              otherRestrictions = true;
           }
-
           return otherRestrictions;
         }
 
@@ -304,9 +272,9 @@
              }
           } catch (err) {
             // Log error
+            console.log(err);
             return false;
           }
-
           return true;
         }
 
@@ -319,10 +287,11 @@
           }
 
           var is_mandatory = (el.id.indexOf("autocomplete") < 0 &&
+                        (typeof $(el).attr("class") !== 'undefined' && $(el).attr("class").indexOf("select2") < 0) &&
                         !$(el).hasClass('value-select') &&
                         el.type !== 'radio' &&
                         el.type !== 'button');
-          return is_mandatory;
+            return is_mandatory;
         }
 
         var onInputChange = function(e){
@@ -363,9 +332,15 @@
 
         $('#category_form').change(onInputChange).change();
         $('#id_resource-group').change(onInputChange).change();
-        document.querySelector('select[name="resource-keywords"]').onchange=onInputChange
+        try {
+            //document.querySelector('select[name="resource-keywords"]').onchange=onInputChange   
+        } catch (error) {
+            conosle.log('Error: (resource-keywords): ', error)
+        }
 
         $('#id_resource-regions').change(onInputChange).change();
+        $('#id_resource-temporal_extent_end').on('blur', function() {$(this).change(onInputChange).change();})
+        $('#id_resource-temporal_extent_start').on('blur', function() {$(this).change(onInputChange).change();})
         $('#mandatory').find(":input:not(.value-select):not(.autocomplete)").each(function(){
             if(isMandatoryField(this)) {
                 prevNum++;
@@ -471,36 +446,25 @@
         });
 
         $('#btn_upd_md_dwn').click(function(){
-
-          if($('#id_resource-title').val().length == 0){
-
-            alert("Informe o título do metadado");
-            return;
-
-          } else {
-
-            console.log("Preencheu todos!");
-
             if
-              ( is_category_mandatory &&
-                  (
-                      (!is_advanced && $('#category_form').hasClass("input-empty")) ||
-                      (is_advanced && !$('#category_form input:checked').val())
-                  )
+            ( is_category_mandatory &&
+                (
+                    (!is_advanced && $('#category_form').hasClass("input-empty")) ||
+                    (is_advanced && !$('#category_form input:checked').val())
+                )
+            ) {
+                $('#category_mandatoryDialog').modal();
+            } else if
+              ( is_group_mandatory &&
+                (
+                  (!is_advanced && $('#id_resource-group').hasClass("input-empty")) ||
+                  (is_advanced && !$('#id_resource-group').val())
+                )
               ) {
-                  $('#category_mandatoryDialog').modal();
-              } else if
-                ( is_group_mandatory &&
-                  (
-                    (!is_advanced && $('#id_resource-group').hasClass("input-empty")) ||
-                    (is_advanced && !$('#id_resource-group').val())
-                  )
-                ) {
-                  $('#group_mandatoryDialog').modal();
-              } else {
-                  $('#preview_pleaseWaitDialog').modal();
-              }
-          }
+                $('#group_mandatoryDialog').modal();
+            } else {
+                $('#preview_pleaseWaitDialog').modal();
+            }
         });
 
         $('#btn_upd_md_done').click(function(){
@@ -524,7 +488,6 @@
                 $('#preview_pleaseWaitDialog').modal();
                 metadata_update_done = true;
                 metadata_preview = false;
-                $('#metadata_update').submit();
             }
         });
 
@@ -838,16 +801,23 @@
 
 <script>
     document.addEventListener('click', function (event) {
-        if (event.target.id === 'select2-id_resource-embrapa_unity-container') {
-            var item = $('#select2-id_resource-purpose-container')
-            if (item) {
-                item[0].addEventListener("onblur", send_embrapa_unity_code(5000))
-            }
-        } 
-        else if ((event.target.id === 'select2-id_resource-purpose-container') ||
-                ((event.target.hasAttribute("aria-owns") && (event.target.getAttribute("aria-owns") == "select2-id_resource-purpose-results")))){
+        if (event.target.id === 'id_resource-embrapa_unity' && event.x === 0) {
             //
-            send_embrapa_unity_code(0)
+            document.getElementById("select2-id_resource-purpose-container").innerHTML = '';
+            var code = $('#id_resource-embrapa_unity')[0].options[$('#id_resource-embrapa_unity')[0].selectedIndex].text
+			code = code.split('-')[0].trim()
+            $.ajax({
+                type: 'GET',
+                url: '/base/autocomplete_embrapa_unity',
+                contentType: 'application/json; charset=utf-8',
+                data: {'q': code},
+                success: function(data) {
+                    //
+                },
+                error: function(rs, e) { 
+                    alert(rs.responseText);
+                }
+            });
         }
         else if (location.href.indexOf('advanced') > -1) {
             if (event.target.id == 'id_resource-choice_projeto_acao_gerencial_1') 
@@ -890,27 +860,5 @@
                 alert(rs.responseText);                
             }
         })
-    }
-    // 
-    function send_embrapa_unity_code(time) {
-        setTimeout(function(){
-            var code = $('#select2-id_resource-embrapa_unity-container').text()
-            code  = code.substring(1, code.length)
-            code = code.split('-')[0].trim()
-            //console.log('send_embrapa_unity_code: ', code), 
-            //
-            $.ajax({
-                type: 'GET',
-                url: '/base/autocomplete_embrapa_unity',
-                contentType: 'application/json; charset=utf-8',
-                data: {'q': code},
-                success: function(data) {
-                    //
-                },
-                error: function(rs, e) { 
-                    alert(rs.responseText);
-                }
-            });
-        }, time)
     }
 </script>

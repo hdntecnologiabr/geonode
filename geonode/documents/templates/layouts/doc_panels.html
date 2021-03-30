@@ -60,7 +60,7 @@ function save_autor() {
   }
   if ($('#id_afiliacao').val().length == 0)
   {
-    alert('Informe a Afiliação');
+    alert('Informe a Afilia��o');
     return;
   }
   if ($('#id_name').val().length > 0 &&
@@ -94,7 +94,7 @@ function save_autor() {
 function save_referencia() {
   if ($('#id_name_reference').val().length == 0)
   {
-    alert('Informe a Referência');
+    alert('Informe a Refer�ncia');
     return;
   }
 
@@ -109,7 +109,7 @@ function save_referencia() {
         //
         $('#addingEmbrapaReferenceModal').modal('hide');
         if (JSON.parse(data).success) {
-          alert('Referência salva com sucesso!')
+          alert('Refer�ncia salva com sucesso!')
         }
         else {
           alert('Ocorreu um erro ao tentar salvar!')
@@ -324,7 +324,7 @@ span.grippy::after {
 }
 </style>
 <button class="btn btn-success metadata-edit-done" id="btn_upd_md_done" type="submit" style="float:right; opacity: 0;" >{% trans "Done!" %}</button>
-{% block body_outer %}
+
 <ul id="md_tabs" class="nav nav-tabs">
   <li id="metadata_edit_tab" class="active">
       <a data-toggle="tab" href="#edit-metadata"><i class="fa fa-pencil"></i>{% trans "Edit" %}</a>
@@ -371,13 +371,31 @@ span.grippy::after {
                     <div class="row">
                         <div class="col">
                             <div id="basicInfo" class="container-fluid">
+
                             </div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col">
                             <div id="basicDescriptiveInfo" class="container-fluid">
-                                <div class="col-lg-7">
+                                <div class="col-lg-3">
+                                    <img id="image" style="max-height: 100%; max-width: 100%; min-height: 100%; min-width: 100%">
+                                    <script>
+                                        const image = document.getElementById('image');
+                                        const path = location.pathname.split('/');
+                                        const id = path[path.length - 2];
+                                        const prefetch_url = "{{ resource.curatedthumbnail.thumbnail_url }}";
+                                        const c_widget = new CropWidget(image,
+                                            parseInt(
+                                                id
+                                            ),
+                                            '/api/documents/',
+                                            prefetch_url
+                                        );
+                                        c_widget.init();
+                                    </script>
+                                </div>
+                                <div class="col-lg-4">
                                     <span><label for="{{ document_form.title|id }}">{{ document_form.title.label }}</label></span>
                                     <!--<p class="xxs-font-size">(Name by which the cited resource is known)</p>-->
                                     {{ document_form.title }}
@@ -492,14 +510,8 @@ span.grippy::after {
                                         {{ document_form.license }}
                                     </div>
                                     <div>
-                                      <span><label
-                                          for="{{ document_form.doi|id }}">{{ document_form.doi.label }}</label></span>
-                                      <input id="id_resource-doi" name="resource-doi" type="text"
-                                        class="has-external-popover" data-container="body"
-                                        data-content="a DOI will be added by Admin before publication."
-                                        data-html="true" data-placement="right"
-                                        placeholder="a DOI will be added by Admin before publication."
-                                        value="{{ document_form.doi.value }}">
+                                        <span><label for="{{ document_form.doi|id }}">{{ document_form.doi.label }}</label></span>
+                                        {{ document_form.doi }}
                                     </div>
                                 </div>
                                 <div class="col-lg-4">
@@ -530,7 +542,7 @@ span.grippy::after {
                                           <div class="modal-body">
 
                                               <div class="pure-control-group">
-                                                <label>Referência</label>
+                                                <label>Refer�ncia</label>
                                                 <input id="id_name_reference" type="text">
                                               </div>
 
@@ -576,7 +588,7 @@ span.grippy::after {
                     {{ document_form.edition }}
                 </div>
                 <!--<button type="button" onclick="submitBtn('btn_projeto_embrapa')" class="btn btn-primary">Listar Projetos</button>
-                <button type="button" onclick="submitBtn('btn_acao_gerencial_embrapa')" class="btn btn-primary">Listar Ações Gerenciais</button>-->
+                <button type="button" onclick="submitBtn('btn_acao_gerencial_embrapa')" class="btn btn-primary">Listar A��es Gerenciais</button>-->
                 <div>
                     <span><label for="{{ document_form.choice_projeto_acao_gerencial|id }}">{{ document_form.choice_projeto_acao_gerencial.label }}</label></span>
                     <!--<p class="xxs-font-size">(Brief narrative summary of the content of the resource/s)</p>-->
@@ -674,7 +686,7 @@ span.grippy::after {
                                       <input id="id_name" type="text">
                                       <label>Auditoria</label>
                                       <input id="id_autoria" type="text">
-                                      <label>Afiliação</label>
+                                      <label>Afilia��o</label>
                                       <input id="id_afiliacao" type="text">
                                     </div>
                                     <div class="modal-footer">
@@ -690,7 +702,7 @@ span.grippy::after {
                     {% if GEONODE_SECURITY_ENABLED %}
                     <!--<hr />
                     <div class="modal-body" id="_permissions" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-                        {# include "_permissions.html" #}
+                         include "_permissions.html"
                     </div>
                     <div class="modal fade" id="_permissions_feedbacks" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
                       <div class="modal-dialog" role="document">
@@ -753,4 +765,3 @@ span.grippy::after {
       </div>
     </div>
 </div>
-{% endblock %}

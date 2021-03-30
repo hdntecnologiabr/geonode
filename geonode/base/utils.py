@@ -24,16 +24,24 @@
 # Standard Modules
 import os
 import logging
+from dateutil.parser import isoparse
+from datetime import datetime, timedelta
 
 # Django functionality
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.files.storage import FileSystemStorage
 from django.core.files.storage import default_storage as storage
 
 # Geonode functionality
+from guardian.shortcuts import get_perms, remove_perm, assign_perm
+
+from geonode.documents.models import Document
 from geonode.layers.models import Layer
-from geonode.base.models import ResourceBase, Link
+from geonode.base.models import ResourceBase, Link, Configuration
 from geonode.geoserver.helpers import ogc_server_settings
+from geonode.maps.models import Map
+from geonode.services.models import Service
 
 logger = logging.getLogger('geonode.base.utils')
 
@@ -45,8 +53,7 @@ _names = ['Zipped Shapefile', 'Zipped', 'Shapefile', 'GML 2.0', 'GML 3.1.1', 'CS
 # embrapa #
 from datetime import datetime
 from geonode.base.models import Embrapa_Data_Quality_Statement, Embrapa_Authors
-from django.db.models.functions import (ExtractDay, ExtractMonth, ExtractYear, ExtractHour, ExtractMinute, 
-ExtractSecond)
+from django.db.models.functions import (ExtractDay, ExtractMonth, ExtractYear, ExtractHour, ExtractMinute, ExtractSecond)
 import requests
 
 from django.http import HttpResponse
@@ -61,6 +68,8 @@ class AuthorObjects:
 
 def db_table_exists(table_name):
 
+    print("Nome da tabela:")
+    print(table_name)
     if table_name in connection.introspection.table_names():
         return table_name in connection.introspection.table_names()
     else:
@@ -69,9 +78,9 @@ def db_table_exists(table_name):
 def authors_objects_api():
 
     try:
-        #autores_endpoint = 'https://www.ainfo-h.cnptia.embrapa.br/ws/rest/listaAutores'
+        autores_endpoint = 'https://www.ainfo-h.cnptia.embrapa.br/ws/rest/listaAutores'
 
-        autores_endpoint = 'https://embrapa-geoinfo-api-mock.herokuapp.com/ws/rest/listaAutores'
+        #autores_endpoint = 'https://embrapa-geoinfo-api-mock.herokuapp.com/ws/rest/listaAutores'
 
         response = requests.get(autores_endpoint)
 
@@ -99,9 +108,9 @@ def choice_authors():
 
     try:
 
-        #autores_endpoint = 'https://www.ainfo-h.cnptia.embrapa.br/ws/rest/listaAutores'
+        autores_endpoint = 'https://www.ainfo-h.cnptia.embrapa.br/ws/rest/listaAutores'
 
-        autores_endpoint = 'https://embrapa-geoinfo-api-mock.herokuapp.com/ws/rest/listaAutores'
+        #autores_endpoint = 'https://embrapa-geoinfo-api-mock.herokuapp.com/ws/rest/listaAutores'
 
         #autores_endpoint = 'http://www.ainfo-h.cnptia.embrapa.br/ws/rest/listaAutoriaByAutoria?autoria={0}'.format(settings.FILTRO_AUTOR)
 
@@ -146,9 +155,9 @@ def choice_authors():
 def choice_data_quality_statement():
 
     try:
-        #data_quality_statement_endpoint = 'https://www.ainfo-h.cnptia.embrapa.br/ws/rest/tituloByTitulo?titulo={0}'.format(settings.FILTRO_DATA)
+        data_quality_statement_endpoint = 'https://www.ainfo-h.cnptia.embrapa.br/ws/rest/tituloByTitulo?titulo={0}'.format(settings.FILTRO_DATA)
 
-        data_quality_statement_endpoint = 'https://embrapa-geoinfo-api-mock.herokuapp.com/data-quality-statement'
+        #data_quality_statement_endpoint = 'https://embrapa-geoinfo-api-mock.herokuapp.com/data-quality-statement'
 
         response = requests.get(data_quality_statement_endpoint)
 
@@ -189,108 +198,121 @@ def choice_data_quality_statement():
     #return data_quality_statement_content_reference
 
 def choice_purpose_list():
-
     embrapaunity = settings.EMBRAPA_UNITY_DEFAULT
-
     result = choice_purpose()
-
     return result
 
-def choice_purpose():
+def savetext(text):
+    f = open("/usr/src/geonode/geonode/log_utils.txt", "a+")
+    f.write(str(text))
+    f.close()
+
+def choice_purpose(val):
+    #savetext("DEF choice_purpose VALUE : {}".format(str(val)))
+    #savetext()
+
+    if val == "":
+        val = 0
+
+    if int(val) > 0:
+        if os.path.exists("/usr/src/geonode/geonode/log_unidade.txt"):
+            os.remove("/usr/src/geonode/geonode/log_unidade.txt")
+        f = open("/usr/src/geonode/geonode/log_unidade.txt", "a+")
+        f.write(str(val))
+        f.close()
+    elif val == 0:
+        if os.path.exists("/usr/src/geonode/geonode/log_unidade.txt"):
+            f = open("/usr/src/geonode/geonode/log_unidade.txt", "r")
+            val = f.read()
+            f.close()
+
     current_year = get_only_year()
 
-    unity_id = settings.EMBRAPA_UNITY_DEFAULT
+    if val == 0 or val == "0":
+        val = 96
 
-    # Chamada para ação gerencial
-    try:
-        acao_gerencial_endpoint = 'https://sistemas.sede.embrapa.br/corporativows/rest/corporativoservice/lista/acoesgerenciais/poridunidadeembrapaano/{0}/{1}'.format(unity_id, current_year)
-
-        response = requests.get(acao_gerencial_endpoint)
-
-        data = response.json()
-    except Exception as error:
-        return []
-
-    data_acao_gerencial = data["acaoGerencial"]
-
-    # Chamada para projeto
-    try:
-        projeto_endpoint = 'https://sistemas.sede.embrapa.br/corporativows/rest/corporativoservice/projeto/lista/poridunidadeembrapa?id_unidadeembrapa={0}'.format(unity_id)
-        
-        response = requests.get(projeto_endpoint)
-
-        data = response.json()
-    except Exception as error:
-        return []
-
-    data_projeto_id_titulo = data["projeto"]
-
-    tamanho_acao_gerencial = [i for i in range(len(data_acao_gerencial))]
-
-    tamanho_projeto = [i for i in range(len(data_projeto_id_titulo))]
-
-    embrapa_acao_gerencial_projeto_ids = [i for i in range(len(data_acao_gerencial) + len(data_projeto_id_titulo))]
-
-    embrapa_acao_gerencial = [i for i in range(len(data_acao_gerencial))]
-
-    embrapa_projeto = [i for i in range(len(data_projeto_id_titulo))]
+    unity_id = val
+    
+    if unity_id == 0:
+        unity_id = settings.EMBRAPA_UNITY_DEFAULT
 
     if settings.ACAO_GERENCIAL_API:
+        try:
+            #savetext('UTILS - Codigo unidade : {} - {}'.format(unity_id, str(datetime.now())))
+            acao_gerencial_endpoint = 'https://sistemas.sede.embrapa.br/corporativows/rest/corporativoservice/lista/acoesgerenciais/poridunidadeembrapaano/{0}/{1}'.format(unity_id, current_year)
+            response = requests.get(acao_gerencial_endpoint)
+            data = response.json()
+        except Exception as error:
+            savetext("UTILS - choice_purpose erro 1")
+            savetext(error)
+            return []
+
+        data_acao_gerencial = data["acaoGerencial"]
+        embrapa_acao_gerencial = [i for i in range(len(data_acao_gerencial))]
+
         for i in range(len(data_acao_gerencial)):
             embrapa_acao_gerencial[i] = data_acao_gerencial[i]["acaoGerencialId"] + ' - ' + data_acao_gerencial[i]["titulo"]
 
         return embrapa_acao_gerencial
+    else :
+        # Chamada para projeto
+        try:
+            projeto_endpoint = 'https://sistemas.sede.embrapa.br/corporativows/rest/corporativoservice/projeto/lista/poridunidadeembrapa?id_unidadeembrapa={0}'.format(unity_id)
+            response = requests.get(projeto_endpoint)
+            data = response.json()
+        except Exception as error:
+            savetext("choice_purpose erro 2")
+            savetext(error)        
+            return []
+        
+        data_projeto_id_titulo = data["projeto"]
+        embrapa_projeto = [i for i in range(len(data_projeto_id_titulo))]
 
-    elif settings.PROJETO_API:
         if type(data_projeto_id_titulo) is dict:
             embrapa_projeto = ['1']
             embrapa_projeto[0] = data_projeto_id_titulo["id"] + ' - ' + data_projeto_id_titulo["titulo"]
         elif type(data_projeto_id_titulo) is list:
             for i in range(len(data_projeto_id_titulo)):
-                print("data_projeto_id_titulo:")
-                print(len(data_projeto_id_titulo))
                 embrapa_projeto[i] = data_projeto_id_titulo[i]["id"] + ' - ' + data_projeto_id_titulo[i]["titulo"]
-
+        #savetext("choice_purpose lista:")
+        #savetext(str(embrapa_projeto))
         return embrapa_projeto
 
     return []
-
-    #for i in range(len(data_acao_gerencial)):
-    #    embrapa_acao_gerencial_projeto_ids[i] = data_acao_gerencial[i]["acaoGerencialId"] + ' - ' + data_acao_gerencial[i]["titulo"]
-
-    #j = len(data_acao_gerencial)
-
-    #for i in range(len(data_projeto_id_titulo)):
-        #embrapa_acao_gerencial_projeto_ids[j] = data_projeto_id_titulo[i]["id"] + ' - ' + data_projeto_id_titulo[i]["titulo"]
-    #    print(len(data_projeto_id_titulo))
-    #    print(data_projeto_id_titulo[0]["id"])
-    #    print(data_projeto_id_titulo[0]["titulo"])
-    #    j = j + 1
-
-    #return embrapa_acao_gerencial_projeto_ids
 
 
 def choice_unity():
     try:
         response = requests.get('https://sistemas.sede.embrapa.br/corporativows/rest/corporativoservice/unidades/lista/todas')
-        
+        savetext('Response: ' + str(response))
+
         data = response.json()
+        savetext('len(data): ' + str(len(data)))
 
         data_ids = data["unidadesEmbrapa"]
+        savetext('Tamanho data_ids: ' + str(len(data_ids)))
     except Exception as error:
+        savetext("Erro choice_unity: ")
+        savetext(error)
         return []
+    
     embrapa_only_ids = [i for i in range(len(data_ids))]
+    savetext('Tamanho embrapa_only_ids: ' + str(len(embrapa_only_ids)))
 
     embrapa_only_names = [i for i in range(len(data_ids))]
+    savetext('Tamanho embrapa_only_names: ' + str(len(embrapa_only_names)))
 
     embrapa_ids_names = [i for i in range(len(data_ids))]
-
+    savetext('Tamanho embrapa_ids_names: ' + str(len(embrapa_ids_names)))
+    
     for i in range(len(data_ids)):
         embrapa_only_ids[i] = data_ids[i]["id"]
         embrapa_only_names[i] = data_ids[i]["nome"]
 
     for i in range(len(data_ids)):
         embrapa_ids_names[i] = embrapa_only_ids[i] + ' - ' + embrapa_only_names[i]
+
+    savetext('Tamanho embrapa_ids_names: ' + str(len(embrapa_ids_names)))
 
     return embrapa_ids_names
 
@@ -393,7 +415,8 @@ def remove_duplicate_links(resource):
     if isinstance(resource, Layer):
         # fixup Legend links
         layer = resource
-        legend_url_template = ogc_server_settings.PUBLIC_LOCATION + \
+        legend_url_template = \
+            ogc_server_settings.PUBLIC_LOCATION + \
             'ows?service=WMS&request=GetLegendGraphic&format=image/png&WIDTH=20&HEIGHT=20&LAYER=' + \
             '{alternate}&STYLE={style_name}' + \
             '&legend_options=fontAntiAliasing:true;fontSize:12;forceLabels:on'
@@ -407,3 +430,81 @@ def remove_duplicate_links(resource):
                     style_name=layer.default_style.name),
                 mime='image/png',
                 link_type='image')
+
+
+def configuration_session_cache(session):
+    CONFIG_CACHE_TIMEOUT_SEC = 60
+
+    _config = session.get('config')
+    _now = datetime.utcnow()
+    _dt = isoparse(_config.get('expiration')) if _config else _now
+    if _config is None or _dt < _now:
+        config = Configuration.load()
+        _dt = _now + timedelta(seconds=CONFIG_CACHE_TIMEOUT_SEC)
+        cached_config = {
+            'configuration': {},
+            'expiration': _dt.isoformat()
+        }
+
+        for field_name in ['read_only', 'maintenance']:
+            cached_config['configuration'][field_name] = getattr(config, field_name)
+
+        session['config'] = cached_config
+
+
+class OwnerRightsRequestViewUtils:
+
+    @staticmethod
+    def get_message_recipients():
+        User = get_user_model()
+        allowed_users = User.objects.none()
+        if OwnerRightsRequestViewUtils.is_admin_publish_mode():
+            allowed_users |= User.objects.filter(is_superuser=True)
+        return allowed_users
+
+    @staticmethod
+    def get_resource(resource_base):
+        if resource_base.polymorphic_ctype.name == 'layer':
+            return Layer.objects.get(pk=resource_base.pk)
+        elif resource_base.polymorphic_ctype.name == 'document':
+            return Document.objects.get(pk=resource_base.pk)
+        elif resource_base.polymorphic_ctype.name == 'map':
+            return Map.objects.get(pk=resource_base.pk)
+        else:
+            return Service.objects.get(pk=resource_base.pk)
+
+    @staticmethod
+    def is_admin_publish_mode():
+        return settings.ADMIN_MODERATE_UPLOADS
+
+
+class ManageResourceOwnerPermissions:
+    def __init__(self, resource):
+        self.resource = resource
+
+    def set_owner_permissions_according_to_workflow(self):
+        if self.resource.is_approved and OwnerRightsRequestViewUtils.is_admin_publish_mode():
+            self._disable_owner_write_permissions()
+        else:
+            self._restore_owner_permissions()
+
+    def _disable_owner_write_permissions(self):
+
+        for perm in get_perms(self.resource.owner, self.resource.get_self_resource()):
+            remove_perm(perm, self.resource.owner, self.resource.get_self_resource())
+
+        for perm in get_perms(self.resource.owner, self.resource):
+            remove_perm(perm, self.resource.owner, self.resource)
+
+        for perm in self.resource.BASE_PERMISSIONS.get('read') + self.resource.BASE_PERMISSIONS.get('download'):
+            assign_perm(perm, self.resource.owner, self.resource.get_self_resource())
+
+    def _restore_owner_permissions(self):
+
+        for perm_list in self.resource.BASE_PERMISSIONS.values():
+            for perm in perm_list:
+                assign_perm(perm, self.resource.owner, self.resource.get_self_resource())
+
+        for perm_list in self.resource.PERMISSIONS.values():
+            for perm in perm_list:
+                assign_perm(perm, self.resource.owner, self.resource)

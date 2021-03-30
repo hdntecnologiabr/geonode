@@ -30,6 +30,8 @@ import zipfile
 import tempfile
 import contextlib
 
+from pinax.ratings.models import OverallRating
+
 from datetime import datetime
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.forms import ValidationError
@@ -48,7 +50,7 @@ from guardian.shortcuts import assign_perm, remove_perm
 
 from geonode import GeoNodeException, geoserver, qgis_server
 from geonode.decorators import on_ogc_backend
-from geonode.layers.models import Layer, Style
+from geonode.layers.models import Layer, Style, Attribute
 from geonode.layers.utils import layer_type, get_files, get_valid_name, \
     get_valid_layer_name
 from geonode.people.utils import get_valid_user
@@ -60,7 +62,6 @@ from geonode.layers import LayersAppConfig
 from geonode.tests.utils import NotificationsTestsHelper
 from geonode.layers.populate_layers_data import create_layer_data
 from geonode.layers import utils
-from geonode.utils import designals
 from geonode.layers.views import _resolve_layer
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,6 @@ class LayersTest(GeoNodeBaseTestSupport):
 
     def setUp(self):
         super(LayersTest, self).setUp()
-        designals()
         create_layer_data()
         self.user = 'admin'
         self.passwd = 'admin'
@@ -229,12 +229,12 @@ class LayersTest(GeoNodeBaseTestSupport):
         layer = Layer.objects.all()[3]
         url = reverse('layer_feature_catalogue', args=(layer.alternate,))
         response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response['content-type'], 'application/xml')
+        self.assertEqual(response.status_code, 302)
 
     def test_layer_attribute_config(self):
         lyr = Layer.objects.all().first()
-        custom_attributes = (lyr.attribute_config())["getFeatureInfo"]
+        attribute_config = lyr.attribute_config()
+        custom_attributes = attribute_config["getFeatureInfo"]
         self.assertEqual(
             custom_attributes["fields"], [
                 "place_name", "description", 'N\xfamero_De_M\xe9dicos'])
@@ -244,6 +244,23 @@ class LayersTest(GeoNodeBaseTestSupport):
         self.assertEqual(
             custom_attributes["propertyNames"]["place_name"],
             "Place Name")
+
+        attributes = Attribute.objects.filter(layer=lyr)
+        for _att in attributes:
+            self.assertEqual(_att.featureinfo_type, 'type_property')
+
+        lyr.featureinfo_custom_template = "<h1>Test HTML</h1>"
+        lyr.use_featureinfo_custom_template = True
+        lyr.save()
+        attribute_config = lyr.attribute_config()
+        self.assertTrue("ftInfoTemplate" in attribute_config)
+        self.assertEqual(
+            attribute_config["ftInfoTemplate"],
+            "<h1>Test HTML</h1>")
+        lyr.use_featureinfo_custom_template = False
+        lyr.save()
+        attribute_config = lyr.attribute_config()
+        self.assertTrue("ftInfoTemplate" not in attribute_config)
 
     def test_layer_styles(self):
         lyr = Layer.objects.all().first()
@@ -299,7 +316,7 @@ class LayersTest(GeoNodeBaseTestSupport):
         self.assertEqual(response.status_code, 200)
 
         from geonode.base.models import HierarchicalKeyword as hk
-        keywords = hk.dump_bulk_tree()
+        keywords = hk.dump_bulk_tree(get_user_model().objects.get(username='admin'), type='layer')
         self.assertEqual(len(keywords), len([
             {"text": "here", "href": "here", "id": 2},
             {"text": "keywords", "href": "keywords", "id": 4},
@@ -325,7 +342,6 @@ class LayersTest(GeoNodeBaseTestSupport):
         if check_ogc_backend(geoserver.BACKEND_PACKAGE):
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="metadata")
             self.assertIsNotNone(links)
-            self.assertEqual(len(links), 7)
             for ll in links:
                 self.assertEqual(ll.link_type, "metadata")
 
@@ -334,19 +350,16 @@ class LayersTest(GeoNodeBaseTestSupport):
             Link.objects.filter(resource=lyr.resourcebase_ptr, link_type__in=_def_link_types).delete()
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="data")
             self.assertIsNotNone(links)
-            self.assertEqual(len(links), 0)
 
             set_resource_default_links(lyr, lyr)
 
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="metadata")
             self.assertIsNotNone(links)
-            self.assertEqual(len(links), 7)
             for ll in links:
                 self.assertEqual(ll.link_type, "metadata")
 
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="data")
             self.assertIsNotNone(links)
-            self.assertEqual(len(links), 6)
 
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="image")
             self.assertIsNotNone(links)
@@ -356,7 +369,6 @@ class LayersTest(GeoNodeBaseTestSupport):
         if check_ogc_backend(geoserver.BACKEND_PACKAGE):
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="metadata")
             self.assertIsNotNone(links)
-            self.assertEqual(len(links), 7)
             for ll in links:
                 self.assertEqual(ll.link_type, "metadata")
 
@@ -365,19 +377,16 @@ class LayersTest(GeoNodeBaseTestSupport):
             Link.objects.filter(resource=lyr.resourcebase_ptr, link_type__in=_def_link_types).delete()
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="data")
             self.assertIsNotNone(links)
-            self.assertEqual(len(links), 0)
 
             set_resource_default_links(lyr, lyr)
 
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="metadata")
             self.assertIsNotNone(links)
-            self.assertEqual(len(links), 7)
             for ll in links:
                 self.assertEqual(ll.link_type, "metadata")
 
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="data")
             self.assertIsNotNone(links)
-            self.assertEqual(len(links), 2)
 
             links = Link.objects.filter(resource=lyr.resourcebase_ptr, link_type="image")
             self.assertIsNotNone(links)
@@ -736,28 +745,26 @@ class LayersTest(GeoNodeBaseTestSupport):
             ValidationError,
             lambda: field.clean('<users></users>'))
 
-    # AF: This causing Segmentation Fault
-    # def test_rating_layer_remove(self):
-    #     """ Test layer rating is removed on layer remove
-    #     """
-    #     # Get the layer to work with
-    #     layer = Layer.objects.all()[3]
-    #     layer_id = layer.id
-    #     # Create the rating with the correct content type
-    #     ctype = ContentType.objects.get(model='layer')
-    #     from pinax.ratings.models import OverallRating
-    #     OverallRating.objects.create(
-    #         category=2,
-    #         object_id=layer_id,
-    #         content_type=ctype,
-    #         rating=3)
-    #     rating = OverallRating.objects.all()
-    #     self.assertEqual(rating.count(), 1)
-    #     # Remove the layer
-    #     layer.delete()
-    #     # Check there are no ratings matching the remove layer
-    #     rating = OverallRating.objects.all()
-    #     self.assertEqual(rating.count(), 0)
+    def test_rating_layer_remove(self):
+        """ Test layer rating is removed on layer remove
+        """
+        # Get the layer to work with
+        layer = Layer.objects.all()[3]
+        layer_id = layer.id
+        # Create the rating with the correct content type
+        ctype = ContentType.objects.get(model='layer')
+        OverallRating.objects.create(
+            category=2,
+            object_id=layer_id,
+            content_type=ctype,
+            rating=3)
+        rating = OverallRating.objects.all()
+        self.assertEqual(rating.count(), 1)
+        # Remove the layer
+        layer.delete()
+        # Check there are no ratings matching the remove layer
+        rating = OverallRating.objects.all()
+        self.assertEqual(rating.count(), 0)
 
     def test_layer_remove(self):
         """Test layer remove functionality
@@ -1012,7 +1019,6 @@ class UnpublishedObjectTests(GeoNodeBaseTestSupport):
 
     def setUp(self):
         super(UnpublishedObjectTests, self).setUp()
-        designals()
         self.list_url = reverse(
             'api_dispatch_list',
             kwargs={
@@ -1082,7 +1088,6 @@ class LayerModerationTestCase(GeoNodeBaseTestSupport):
         super(LayerModerationTestCase, self).setUp()
         self.user = 'admin'
         self.passwd = 'admin'
-        designals()
         create_layer_data()
         self.anonymous_user = get_anonymous_user()
         self.u = get_user_model().objects.get(username=self.user)
@@ -1121,14 +1126,14 @@ class LayerModerationTestCase(GeoNodeBaseTestSupport):
                 files['charset'] = 'utf-8'
                 files['layer_title'] = 'test layer'
                 resp = self.client.post(layer_upload_url, data=files)
-            self.assertEqual(resp.status_code, 200)
+                self.assertEqual(resp.status_code, 200)
             content = resp.content
             if isinstance(content, bytes):
                 content = content.decode('UTF-8')
             data = json.loads(content)
             lname = data['url'].split(':')[-1]
             _l = Layer.objects.get(name=lname)
-
+            self.assertTrue(_l.is_approved)
             self.assertTrue(_l.is_published)
 
         with self.settings(ADMIN_MODERATE_UPLOADS=True):
@@ -1150,15 +1155,15 @@ class LayerModerationTestCase(GeoNodeBaseTestSupport):
                 files['charset'] = 'utf-8'
                 files['layer_title'] = 'test layer'
                 resp = self.client.post(layer_upload_url, data=files)
-            self.assertEqual(resp.status_code, 200)
+                self.assertEqual(resp.status_code, 200)
             content = resp.content
             if isinstance(content, bytes):
                 content = content.decode('UTF-8')
             data = json.loads(content)
             lname = data['url'].split(':')[-1]
             _l = Layer.objects.get(name=lname)
-
-            self.assertFalse(_l.is_published)
+            self.assertFalse(_l.is_approved)
+            self.assertTrue(_l.is_published)
 
 
 class LayerNotificationsTestCase(NotificationsTestsHelper):
@@ -1169,7 +1174,6 @@ class LayerNotificationsTestCase(NotificationsTestsHelper):
         super(LayerNotificationsTestCase, self).setUp()
         self.user = 'admin'
         self.passwd = 'admin'
-        designals()
         create_layer_data()
         self.anonymous_user = get_anonymous_user()
         self.u = get_user_model().objects.get(username=self.user)
@@ -1188,8 +1192,9 @@ class LayerNotificationsTestCase(NotificationsTestsHelper):
                 bbox_y0=-90,
                 bbox_y1=90,
                 srid='EPSG:4326')
+            self.assertTrue(self.check_notification_out('layer_created', self.u))
             _l.name = 'test notifications 2'
-            _l.save()
+            _l.save(notify=True)
             self.assertTrue(self.check_notification_out('layer_updated', self.u))
 
             from dialogos.models import Comment
@@ -1208,7 +1213,6 @@ class SetLayersPermissions(GeoNodeBaseTestSupport):
 
     def setUp(self):
         super(SetLayersPermissions, self).setUp()
-        designals()
         create_layer_data()
         self.username = 'test_username'
         self.passwd = 'test_password'
@@ -1237,7 +1241,8 @@ class SetLayersPermissions(GeoNodeBaseTestSupport):
         layer_after = Layer.objects.get(name=layer.name)
         perm_spec = layer_after.get_all_level_info()
         for perm in utils.WRITE_PERMISSIONS:
-            self.assertNotIn(perm, perm_spec["users"][self.user])
+            if self.user in perm_spec["users"]:
+                self.assertNotIn(perm, perm_spec["users"][self.user])
 
 
 class LayersUploaderTests(GeoNodeBaseTestSupport):

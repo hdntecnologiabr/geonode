@@ -44,28 +44,28 @@ http://master.demo.geonode.org. After your registration you will be able
 to test all basic functionalities like uploading layers, creation of
 maps, editing metadata, styles and much more. To get an overview what
 GeoNode can do we recommend to have a look at the [Users
-Workshop](http://docs.geonode.org/en/2.10/usage/index.html).
+Workshop](https://docs.geonode.org/en/3.0/usage/index.html).
 
 Install
 -------
 
-    The latest official release is 2.10!
+    The latest official release is 2.10.4 and 3.0!
 
 GeoNode can be setup in different ways, flavors and plattforms. If
 you´re planning to do development or install for production please visit
 the offical GeoNode installation documentation:
 
-- [Docker](http://docs.geonode.org/en/2.10/install/core/index.html#docker)
-- [Ubuntu 18.04](http://docs.geonode.org/en/2.10/install/core/index.html#ubuntu-18-04)
+- [Docker](https://docs.geonode.org/en/3.0/install/advanced/core/index.html#docker)
+- [Ubuntu 18.04](https://docs.geonode.org/en/3.0/install/advanced/core/index.html#ubuntu-18-04)
 
 Learn GeoNode
 -------------
 
 After you´ve finished the setup process make yourself familiar with the
 general usage and settings of your GeoNodes instance. - the [User
-Training](http://docs.geonode.org/en/2.10/usage/index.html)
+Training](https://docs.geonode.org/en/3.0/usage/index.html)
 is going in depth into what we can do. - the [Administrators
-Workshop](http://docs.geonode.org/en/2.10/admin/index.html)
+Workshop](https://docs.geonode.org/en/3.0/admin/index.html)
 will guide you to the most important parts regarding management commands
 and configuration settings.
 
@@ -84,7 +84,7 @@ lightweight components to speed up things.
 To get you started have a look at the [Install
 instructions](#install) which cover all what is needed to run GeoNode
 for development. Further visit the the [Developer
-workshop](http://docs.geonode.org/en/2.10/devel/index.html)
+workshop](https://docs.geonode.org/en/3.0/devel/index.html)
 for a basic overview.
 
 If you're planning of customizing your GeoNode instance, or to extend
@@ -117,7 +117,7 @@ Showcase
 A handful of other Open Source projects extend GeoNode’s functionality
 by tapping into the re-usability of Django applications. Visit our
 gallery to see how the community uses GeoNode: [GeoNode
-Showcase](http://geonode.org/gallery/).
+Showcase](https://geonode.org/gallery/).
 
 The development community is very supportive of new projects and
 contributes ideas and guidance for newcomers.
@@ -168,68 +168,3 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along
 with GeoNode. If not, see http://www.gnu.org/licenses.
-
-**HDN Customizations**
-Alterações separadas por data:
-
-01/04/2020
-- Criação do Campo Ano de Criação do Conjunto de Dados;
-- Criação do Campo Escala;
-- Criação do Campo Link VINDE;
-- Criação do Campo INDE.
-
-02/04/2020
-- Criação do Campo Frequência de Manutenção (Manter a lista);
-- Criação do Campo Licença (Manter a lista);
-- Criação do Campo Lista de Autores (Manter a lista);
-- Criação do Campo Lista de Restrições.
-- Criação do Campo Embrapa_Keywords
-
-03/04/2020
-- Mantido o Campo Pontos de Contato com uma única escolha;
-- Customização de opções do Campo Frequência de Manutenção;
-
-07/04/2020
-- Customização conteúdo do Campo "Licença";
-- Customização no Campo Regiões.
-
-08/04/2020
-- Ajustes no formulário de metadados;
-- Correções de erros nos documentos e no metadata_detail.
-
-09/04/2020
-- Tradução dos campos;
-- Ajustes no campo Language;
-
-14/04/2020
-- Alocação dos campos do formulário ao novo painel de metadados;
-- Ajustes no template do formulário para alocação dos campos Ano de Criação do Conjunto de Dados,
-	Autores, Escala, Link VINDE, Embrapa_Keywords, INDE.
-- Custmizações nos textos explicativos.
-
-15/04/2020
-- Correção de bugs na hora do submit da camada;
-
-24/04/2020
-- Alterações no views.py da aplicação 'layers', alocado o campo embrapa_keywords com o método "add()";
-
-27/04/2020
-- Alteração no campo embrapa_keywords, alterado de MultipleChoiceField para TagField;
-
-04/05/2020
-- Alterações no banco de dados, renomeado o nome da tabela "base_resourcebase_embrapa_keywords" para "base_keywords_embrapa";
-- Ajustes na consistência dos dados, remoção de espaços entre outros aspectos.
-
-05/05/2020
-- Ajustes nos dados da tabela "base_resourcebase";
-
-20/05/2020
-- Tratamento dos dados "Finalidade", "Autores" e "Declaração da Qualidade do Dado";
-
-29/05/2020
-- Criação do Campo Unidade e Customização do Campo Finalidade (transformando-o de TextField para ChoiceField);
-
-01/06/2020
-- Início da chamada para as api's INTEGRO e IDEARE para o Campo Finalidade;
-
-

@@ -258,7 +258,11 @@ th {
 @font-face {
   font-family: "Glyphicons Halflings";
   src: url("../fonts/glyphicons-halflings-regular.eot");
-  src: url("../fonts/glyphicons-halflings-regular.eot?#iefix") format("embedded-opentype"), url("../fonts/glyphicons-halflings-regular.woff2") format("woff2"), url("../fonts/glyphicons-halflings-regular.woff") format("woff"), url("../fonts/glyphicons-halflings-regular.ttf") format("truetype"), url("../fonts/glyphicons-halflings-regular.svg#glyphicons_halflingsregular") format("svg");
+  src: url("../fonts/glyphicons-halflings-regular.eot?#iefix") format("embedded-opentype"),
+    url("../fonts/glyphicons-halflings-regular.woff2") format("woff2"),
+    url("../fonts/glyphicons-halflings-regular.woff") format("woff"),
+    url("../fonts/glyphicons-halflings-regular.ttf") format("truetype"),
+    url("../fonts/glyphicons-halflings-regular.svg#glyphicons_halflingsregular") format("svg");
 }
 .glyphicon {
   position: relative;
@@ -1074,7 +1078,7 @@ html {
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 body {
-  font-family: 'Lato', sans-serif;
+  font-family: "Lato", sans-serif;
   font-size: 16px;
   line-height: 1.42857143;
   color: #333333;
@@ -2167,6 +2171,10 @@ pre code {
     margin-left: 0%;
   }
 }
+a {
+  color: #028baf;
+  text-decoration: none;
+}
 @media (min-width: 1200px) {
   .col-lg-1,
   .col-lg-2,
@@ -2658,15 +2666,15 @@ output {
   border-radius: 4px;
   -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
-  -webkit-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-  -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-  transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+  -webkit-transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
+  -o-transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
+  transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
 }
 .form-control:focus {
   border-color: #66afe9;
   outline: 0;
-  -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 8px rgba(102, 175, 233, 0.6);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 8px rgba(102, 175, 233, 0.6);
+  -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(102, 175, 233, 0.6);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(102, 175, 233, 0.6);
 }
 .form-control::-moz-placeholder {
   color: #999;
@@ -3199,10 +3207,9 @@ fieldset[disabled] .btn-default.focus {
   color: #fff;
   background-color: #2c689c;
   border-color: #265a88;
-
- .author {
-   margin-top: 10px;
- }
+}
+.author {
+  margin-top: 10px;
 }
 .btn-primary:focus,
 .btn-primary.focus {
@@ -4648,8 +4655,8 @@ fieldset[disabled] .navbar-default .btn-link:focus {
   color: #ccc;
 }
 .navbar-inverse {
-  background-color: #222;
-  border-color: #080808;
+  background-color: #364259 !important;
+  border-radius: 0;
 }
 .navbar-inverse .navbar-brand {
   color: #9d9d9d;
@@ -5200,9 +5207,36 @@ a.thumbnail.active {
 }
 .progress-striped .progress-bar,
 .progress-bar-striped {
-  background-image: -webkit-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: -o-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  background-image: -webkit-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: -o-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
   background-size: 40px 40px;
 }
 .progress.active .progress-bar,
@@ -5215,33 +5249,141 @@ a.thumbnail.active {
   background-color: #27ca3b;
 }
 .progress-striped .progress-bar-success {
-  background-image: -webkit-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: -o-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  background-image: -webkit-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: -o-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
 }
 .progress-bar-info {
   background-color: #1fa0a0;
 }
 .progress-striped .progress-bar-info {
-  background-image: -webkit-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: -o-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  background-image: -webkit-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: -o-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
 }
 .progress-bar-warning {
   background-color: #ff8f31;
 }
 .progress-striped .progress-bar-warning {
-  background-image: -webkit-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: -o-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  background-image: -webkit-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: -o-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
 }
 .progress-bar-danger {
   background-color: #af0900;
 }
 .progress-striped .progress-bar-danger {
-  background-image: -webkit-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: -o-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
-  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  background-image: -webkit-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: -o-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
 }
 .media {
   margin-top: 15px;
@@ -6041,7 +6183,7 @@ button.close {
   position: absolute;
   z-index: 1070;
   display: block;
-  font-family: 'Lato', sans-serif;
+  font-family: "Lato", sans-serif;
   font-style: normal;
   font-weight: 400;
   line-height: 1.42857143;
@@ -6159,7 +6301,7 @@ button.close {
   display: none;
   max-width: 276px;
   padding: 1px;
-  font-family: 'Lato', sans-serif;
+  font-family: "Lato", sans-serif;
   font-style: normal;
   font-weight: 400;
   line-height: 1.42857143;
@@ -6803,22 +6945,22 @@ button.close {
   }
 }
 @font-face {
-  font-family: 'Lato';
+  font-family: "Lato";
   font-style: normal;
   font-weight: 700;
-  src: local('Lato Bold'), local('Lato-Bold'), url(../fonts/lato_bold.ttf) format('truetype');
+  src: local("Lato Bold"), local("Lato-Bold"), url(../fonts/lato_bold.ttf) format("truetype");
 }
 @font-face {
-  font-family: 'Lato';
+  font-family: "Lato";
   font-style: normal;
   font-weight: 300;
-  src: local('Lato Light'), local('Lato-Light'), url(../fonts/lato_light.ttf) format('truetype');
+  src: local("Lato Light"), local("Lato-Light"), url(../fonts/lato_light.ttf) format("truetype");
 }
 @font-face {
-  font-family: 'Lato';
+  font-family: "Lato";
   font-style: normal;
   font-weight: 400;
-  src: local('Lato Regular'), local('Lato-Regular'), url(../fonts/lato_regular.ttf) format('truetype');
+  src: local("Lato Regular"), local("Lato-Regular"), url(../fonts/lato_regular.ttf) format("truetype");
 }
 /* Basics
 ----------------------- */
@@ -6854,8 +6996,8 @@ div#user_messages {
   }
 }
 body {
-  background: #333333;
-  font-family: 'Lato', sans-serif;
+  
+  font-family: "Lato", sans-serif;
   font-size: 16px;
   padding-top: 60px;
 }
@@ -6869,6 +7011,13 @@ h4,
 h5,
 h6 {
   font-weight: 700;
+}
+#cs-page-title-wrapper1 .videohtml5 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: inherit !important;
+  min-height: 100%;
 }
 select {
   background: white;
@@ -6901,7 +7050,7 @@ form input {
 ----------------------- */
 #wrap {
   background: #fff;
-  padding-bottom: 40px;
+  padding-bottom: 120px;
   padding-top: 10px;
   width: 100%;
 }
@@ -6930,28 +7079,30 @@ article.tab-pane {
   border: 0;
 }
 .navbar-inverse .navbar-nav > li > a {
-  color: white;
-  font-weight: 600;
+  color: #999;
   padding-top: 25px;
   padding-bottom: 25px;
 }
 .navbar-inverse .navbar-nav > li > a:hover {
-  background-color: #2c689c;
+  /* background-color: #2c689c; */
 }
 .navbar-inverse .navbar-nav > .open > a,
 .navbar-inverse .navbar-nav > .open > a:focus,
 .navbar-inverse .navbar-nav > .open > a:hover {
-  background-color: #2c689c;
+  background-color: #364259;
+  filter: brightness(0.8);
 }
 .navbar-nav .dropdown-menu {
-  background-color: #2c689c;
-  border-top: 1px solid #2c689c;
+  background-color: #364259;
+  filter: brightness(0.8);
+  border-top: 1px solid #364259;
 }
 .navbar-nav .dropdown-menu a {
   color: white;
 }
 .navbar-nav .dropdown-menu li a:hover {
-  background-color: #204d74;
+  background-color: #364259;
+  filter: brightness(0.8);
   color: white;
 }
 .navbar-nav .dropdown-menu .divider {
@@ -6994,7 +7145,7 @@ article.tab-pane {
   margin-left: 10px;
 }
 .navbar-brand {
-  background: url("../img/logo.png");
+  background: url("../static/geonode/img/logo_geo.png");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
@@ -7026,12 +7177,11 @@ article.tab-pane {
   margin-top: 60px;
 }
 .home .jumbotron {
-  position: relative;
-  background: #2c689c;
-  color: white;
-  margin-bottom: 0;
-  padding: 7.5em 0 3.75em;
+  background: none;
+  color: #fff;
+  padding: 50px 0 60px;
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.4);
+  margin-top: -10px;
 }
 .home .jumbotron a {
   color: #ff8f31;
@@ -7168,9 +7318,9 @@ article.tab-pane {
 /* Home
 ----------------------- */
 .jumbotron {
-  background: #2c689c;
-  color: white;
-  padding: 40px 0 60px;
+  background: none;
+  color: #fff;
+  padding: 50px 0 60px;
   text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.4);
   margin-top: -10px;
 }
@@ -7686,14 +7836,15 @@ nav.filter li a {
 /* Footer
 ----------------------- */
 footer {
-  color: white;
-  padding: 1.5em;
+  background: #eee;
+  border-top: 1px solid #eee;
+  padding: 20px;
 }
 footer a {
-  color: #ff8f31;
+  /* color: #ff8f31; */
 }
 footer a:hover {
-  color: #eb6b00;
+  /* color: #eb6b00; */
 }
 footer form {
   color: #333333;
@@ -7920,10 +8071,10 @@ footer form {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
   .navbar-collapse.collapse {
-    display: none!important;
+    display: none !important;
   }
   .navbar-nav {
-    float: none!important;
+    float: none !important;
     margin: 7.5px -15px;
   }
   .navbar-nav > li {
@@ -7935,10 +8086,10 @@ footer form {
   }
   /* since 3.1.0 */
   .navbar-collapse.collapse.in {
-    display: block!important;
+    display: block !important;
   }
   .collapsing {
-    overflow: hidden!important;
+    overflow: hidden !important;
   }
   .home .navbar-inverse {
     background-color: #333333;
@@ -8116,4 +8267,274 @@ form-inline {
 #metadata_update .form-group {
   margin-right: 0px;
   margin-left: 0px;
+}
+
+.maps1 {
+  width: 302px;
+  float: left;
+}
+#mapas {
+  margin-right: 95px;
+  margin-left: 95px;
+}
+
+video {
+  display: inline-block;
+  vertical-align: baseline;
+  border: medium none;
+  object-fit: contain;
+}
+
+@media only screen and (min-width: 992px) {
+  #cs-page-title-wrapper1 .ww-video-bg {
+    background: none !important;
+  }
+}
+
+.ww-video-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.container1 {
+  z-index: 10;
+  position: relative;
+  max-width: 1170px;
+}
+
+@media (min-width: 1200px) .container1 {
+  width: 1170px;
+}
+
+@media (min-width: 992px) .container1 {
+  width: 970px;
+}
+@media (min-width: 768px) .container1 {
+  width: 750px;
+}
+.container1 {
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.row1 {
+  margin-right: -15px;
+  margin-left: -15px;
+}
+
+@media (min-width: 768px) .col-sm-6 {
+  width: 50%;
+}
+
+#chamada {
+  text-shadow: none;
+  line-height: 36px;
+  color: #666;
+  font-size: 18px;
+  font-weight: lighter;
+}
+
+#name11 {
+  margin-right: 20px;
+  float: left;
+  margin-bottom: 30px;
+  height: 209px;
+  width: 450px;
+  background: url(../img/logo450.png);
+  margin-top: -46px;
+}
+
+/*@media only screen and (max-width: 959px) {
+#name11 { 
+height:154px;
+width: 350px;
+background:url(../static/geonode/img/geoinfo_2016_pqcolor.png);
+margin:30px 100px;
+float:left; 
+margin-bottom:30px;
+}
+}*/
+
+video {
+  display: inline-block;
+  vertical-align: baseline;
+  border: medium none;
+  object-fit: contain;
+}
+
+@media only screen and (min-width: 992px) {
+  #cs-page-title-wrapper1 .ww-video-bg {
+    background: none !important;
+  }
+}
+
+.ww-video-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.container1 {
+  z-index: 10;
+  position: relative;
+  max-width: 1170px;
+}
+
+@media (min-width: 1200px) .container1 {
+  width: 1170px;
+}
+
+@media (min-width: 992px) .container1 {
+  width: 970px;
+}
+@media (min-width: 768px) .container1 {
+  width: 750px;
+}
+.container1 {
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.row1 {
+  margin-right: -15px;
+  margin-left: -15px;
+}
+
+@media (min-width: 768px) .col-sm-6 {
+  width: 50%;
+}
+
+/*p #chamada{ 
+font-family:Helvetica, arial, sans-serif;
+text-shadow:none;
+line-height:36px;
+color:#666;
+font-size:18px;
+font-weight:lighter;
+max-width:500px;
+margin:0px;
+margin-left:30px;
+float:right;
+
+}->*/
+
+#chamada {
+  text-shadow: none;
+  line-height: 36px;
+  color: #666;
+  font-size: 18px;
+  font-weight: lighter;
+}
+
+#cs-page-title-wrapper1 {
+  background-size: cover;
+  padding-top: 34px;
+  margin: 0 0 70px 0;
+  position: relative;
+  overflow: hidden;
+  height: 199px;
+}
+
+#cs-page-title-wrapper1 .videohtml5 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: inherit !important;
+  min-height: 100%;
+}
+
+body {
+  background-attachment: fixed;
+  background-size: 100%;
+  background-repeat: no-repeat;
+}
+
+.container1 {
+  z-index: 10;
+  position: relative;
+  max-width: 1170px;
+}
+
+@media (min-width: 1200px) .container1 {
+  width: 1170px;
+}
+
+@media (min-width: 992px) .container1 {
+  width: 970px;
+}
+@media (min-width: 768px) .container1 {
+  width: 750px;
+}
+.container1 {
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.row1 {
+  margin-right: -15px;
+  margin-left: -15px;
+}
+
+#cs-page-title-wrapper1 .title_bar {
+  text-align: left;
+  line-height: 30px;
+  font-size: 15px;
+  color: #222222;
+  font-weight: 300;
+  font-style: normal;
+  font-family: "Open Sans", Arial, Helvetica, sans-serif;
+  margin-left: -45px;
+}
+
+.row1 h1 {
+  color: #313d3d;
+  font-family: "Open Sans", Arial, Helvetica, sans-serif;
+  line-height: 40px;
+  font-weight: 800;
+  font-style: normal;
+  font-size: 27px;
+}
+
+#cs-page-title-wrapper1 .title_bar {
+  width: 475px;
+}
+
+media (min-width: 992px) #cs-page-title-wrapper .ww-video-bg {
+  background: none !important;
+}
+
+.apreresponsivo {
+  display: inherit;
+  margin-bottom: 20px;
+}
+
+.apreresponsivo {
+  display: none;
+}
+
+.figuras p {
+  text-shadow: none;
+  line-height: 24px;
+  font-size: 16px;
+  color: #3d7db4;
+  font-weight: normal;
+  margin-top: 20px;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 20px;
+}
+.apresentacao{
+  margin-bottom: 0 !important;
 }

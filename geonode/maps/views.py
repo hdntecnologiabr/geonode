@@ -67,6 +67,7 @@ from geonode.base.models import (
     TopicCategory)
 from geonode import geoserver, qgis_server
 from geonode.groups.models import GroupProfile
+from geonode.base.auth import get_or_create_token
 from geonode.documents.models import get_related_documents
 from geonode.people.forms import ProfileForm
 from geonode.base.views import batch_modify
@@ -77,6 +78,8 @@ from requests.compat import urljoin
 from deprecated import deprecated
 
 from dal import autocomplete
+
+from geonode.base.utils import ManageResourceOwnerPermissions
 
 # embrapa #
 from django.utils.text import slugify
@@ -131,6 +134,12 @@ def map_detail(request, mapid, snapshot=None, template='maps/map_detail.html'):
         'base.view_resourcebase',
         _PERMISSION_MSG_VIEW)
 
+    permission_manager = ManageResourceOwnerPermissions(map_obj)
+    permission_manager.set_owner_permissions_according_to_workflow()
+
+    # Add metadata_author or poc if missing
+    map_obj.add_missing_metadata_author_or_poc()
+
     # Update count for popularity ranking,
     # but do not includes admins or resource owners
     if request.user != map_obj.owner and not request.user.is_superuser:
@@ -149,27 +158,42 @@ def map_detail(request, mapid, snapshot=None, template='maps/map_detail.html'):
     layers = MapLayer.objects.filter(map=map_obj.id)
     links = map_obj.link_set.download()
 
+    # Call this first in order to be sure "perms_list" is correct
+    permissions_json = _perms_info_json(map_obj)
+
+    perms_list = get_perms(
+        request.user,
+        map_obj.get_self_resource()) + get_perms(request.user, map_obj)
+
     group = None
     if map_obj.group:
         try:
             group = GroupProfile.objects.get(slug=map_obj.group.name)
         except GroupProfile.DoesNotExist:
             group = None
+
+    access_token = None
+    if request and request.user:
+        access_token = get_or_create_token(request.user)
+        if access_token and not access_token.is_expired():
+            access_token = access_token.token
+        else:
+            access_token = None
+
     context_dict = {
+        'access_token': access_token,
         'config': config,
         'resource': map_obj,
         'group': group,
         'layers': layers,
-        'perms_list': get_perms(
-            request.user,
-            map_obj.get_self_resource()) + get_perms(request.user, map_obj),
-        'permissions_json': _perms_info_json(map_obj),
+        'perms_list': perms_list,
+        'permissions_json': permissions_json,
         "documents": get_related_documents(map_obj),
         'links': links,
         'preview': getattr(
             settings,
             'GEONODE_CLIENT_LAYER_PREVIEW_LIBRARY',
-            'geoext'),
+            'mapstore'),
         'crs': getattr(
             settings,
             'DEFAULT_MAP_CRS',
@@ -248,6 +272,8 @@ def map_metadata(
         'base.change_resourcebase_metadata',
         _PERMISSION_MSG_VIEW)
 
+    # Add metadata_author or poc if missing
+    map_obj.add_missing_metadata_author_or_poc()
     poc = map_obj.poc
 
     metadata_author = map_obj.metadata_author
@@ -300,7 +326,7 @@ def map_metadata(
             settings.PROJETO_API = True
             settings.ACAO_GERENCIAL_API = False
         elif management_actions:
-            print("CLIQUEI EM AÇÃO GERENCIAL")
+            print("CLIQUEI EM ACAO GERENCIAL")
             settings.ACAO_GERENCIAL_API = True
             settings.PROJETO_API = False
 
@@ -346,7 +372,6 @@ def map_metadata(
         if new_poc is not None and new_author is not None:
             map_obj.poc = new_poc
             map_obj.metadata_author = new_author
-
         map_obj.title = new_title
         map_obj.abstract = new_abstract
         map_obj.embrapa_autores.clear()
@@ -360,7 +385,7 @@ def map_metadata(
         map_obj.regions.clear()
         map_obj.regions.add(*new_regions)
         map_obj.category = new_category
-        map_obj.save()
+        map_obj.save(notify=True)
 
         register_event(request, EventType.EVENT_CHANGE_METADATA, map_obj)
         if not ajax:
@@ -430,8 +455,9 @@ def map_metadata(
 
     if settings.ADMIN_MODERATE_UPLOADS:
         if not request.user.is_superuser:
-            map_form.fields['is_published'].widget.attrs.update(
-                {'disabled': 'true'})
+            if settings.RESOURCE_PUBLISHING:
+                map_form.fields['is_published'].widget.attrs.update(
+                    {'disabled': 'true'})
 
             can_change_metadata = request.user.has_perm(
                 'change_resourcebase_metadata',
@@ -455,7 +481,7 @@ def map_metadata(
         "category_form": category_form,
         "tkeywords_form": tkeywords_form,
         "layers": layers,
-        "preview": getattr(settings, 'GEONODE_CLIENT_LAYER_PREVIEW_LIBRARY', 'geoext'),
+        "preview": getattr(settings, 'GEONODE_CLIENT_LAYER_PREVIEW_LIBRARY', 'mapstore'),
         "crs": getattr(settings, 'DEFAULT_MAP_CRS', 'EPSG:3857'),
         "metadata_author_groups": metadata_author_groups,
         "TOPICCATEGORY_MANDATORY": getattr(settings, 'TOPICCATEGORY_MANDATORY', False),
@@ -493,7 +519,9 @@ def map_remove(request, mapid, template='maps/map_remove.html'):
             except Exception:
                 logger.error("Could not build slack message for delete map.")
 
-            delete_map.delay(object_id=map_obj.id)
+            result = delete_map.delay(object_id=map_obj.id)
+            # Attempt to run task synchronously
+            result.get()
 
             try:
                 from geonode.contrib.slack.utils import send_slack_messages
@@ -501,7 +529,9 @@ def map_remove(request, mapid, template='maps/map_remove.html'):
             except Exception:
                 logger.error("Could not send slack message for delete map.")
         else:
-            delete_map.delay(object_id=map_obj.id)
+            result = delete_map.delay(object_id=map_obj.id)
+            # Attempt to run task synchronously
+            result.get()
 
         register_event(request, EventType.EVENT_REMOVE, map_obj)
 
@@ -667,7 +697,7 @@ def map_view(request, mapid, snapshot=None, layer_name=None,
         'preview': getattr(
             settings,
             'GEONODE_CLIENT_LAYER_PREVIEW_LIBRARY',
-            'geoext')
+            'mapstore')
     })
 
 
@@ -757,7 +787,7 @@ def map_edit(request, mapid, snapshot=None, template='maps/map_edit.html'):
         'preview': getattr(
             settings,
             'GEONODE_CLIENT_LAYER_PREVIEW_LIBRARY',
-            'geoext')
+            'mapstore')
     })
 
 
@@ -795,7 +825,7 @@ def new_map(request, template='maps/map_new.html'):
     context_dict["preview"] = getattr(
         settings,
         'GEONODE_CLIENT_LAYER_PREVIEW_LIBRARY',
-        'geoext')
+        'mapstore')
     if isinstance(config, HttpResponse):
         return config
     else:
@@ -875,7 +905,6 @@ def new_map_config(request):
             map_obj.owner = request.user
 
         config = map_obj.viewer_json(request)
-        map_obj.handle_moderated_uploads()
         del config['id']
     else:
         if request.method == 'GET':
@@ -892,6 +921,8 @@ def new_map_config(request):
                 request, map_obj, params.getlist('layer'))
         else:
             config = DEFAULT_MAP_CONFIG
+    if map_obj:
+        map_obj.handle_moderated_uploads()
     return map_obj, json.dumps(config)
 
 

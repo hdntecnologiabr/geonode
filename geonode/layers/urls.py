@@ -32,7 +32,6 @@ js_info_dict = {
 
 layers_list = register_url_event()(TemplateView.as_view(template_name='layers/layer_list.html'))
 
-
 urlpatterns = [
     # 'geonode.layers.views',
     # Embrapa

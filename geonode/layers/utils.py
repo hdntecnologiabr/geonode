@@ -168,9 +168,9 @@ def get_files(filename):
     from geonode.utils import unzip_file
     if zipfile.is_zipfile(filename):
         tempdir = tempfile.mkdtemp()
-        filename = unzip_file(filename,
-                              '.shp', tempdir=tempdir)
-        if not filename:
+        _filename = unzip_file(filename,
+                               '.shp', tempdir=tempdir)
+        if not _filename:
             # We need to iterate files as filename could be the zipfile
             import ntpath
             from geonode.upload.utils import _SUPPORTED_EXT
@@ -181,6 +181,8 @@ def get_files(filename):
                         item_ext.lower() in _SUPPORTED_EXT):
                     filename = os.path.join(tempdir, item)
                     break
+        else:
+            filename = _filename
 
     # Make sure the file exists.
     if not os.path.exists(filename):
@@ -224,13 +226,17 @@ def get_files(filename):
 
     # Only for GeoServer
     if check_ogc_backend(geoserver.BACKEND_PACKAGE):
-        matches = glob.glob(glob_name + ".[sS][lL][dD]")
+        matches = glob.glob(os.path.dirname(glob_name) + "/*.[sS][lL][dD]")
         if len(matches) == 1:
             files['sld'] = matches[0]
         elif len(matches) > 1:
-            msg = ('Multiple style files (sld) for %s exist; they need to be '
-                   'distinct by spelling and not just case.') % filename
-            raise GeoNodeException(msg)
+            matches = glob.glob(glob_name + ".[sS][lL][dD]")
+            if len(matches) == 1:
+                files['sld'] = matches[0]
+            elif len(matches) > 1:
+                msg = ('Multiple style files (sld) for %s exist; they need to be '
+                       'distinct by spelling and not just case.') % filename
+                raise GeoNodeException(msg)
 
     matches = glob.glob(glob_name + ".[xX][mM][lL]")
 
@@ -284,7 +290,7 @@ def layer_type(filename):
     base_name, extension = os.path.splitext(filename)
 
     if extension.lower() == '.zip':
-        zf = ZipFile(filename)
+        zf = ZipFile(filename, allowZip64=True)
         # ZipFile doesn't support with statement in 2.6, so don't do it
         try:
             for n in zf.namelist():
@@ -612,9 +618,10 @@ def file_upload(filename,
     # by default, if RESOURCE_PUBLISHING=True then layer.is_published
     # must be set to False
     if not overwrite:
-        if settings.RESOURCE_PUBLISHING or settings.ADMIN_MODERATE_UPLOADS:
-            is_approved = False
+        if settings.RESOURCE_PUBLISHING:
             is_published = False
+        if settings.ADMIN_MODERATE_UPLOADS:
+            is_approved = False
 
     defaults = {
         'upload_session': upload_session,
@@ -733,7 +740,6 @@ def file_upload(filename,
         # Blank out the store if overwrite is true.
         # geoserver_post_save_signal should upload the new file if needed
         layer.store = '' if overwrite else layer.store
-        layer.save()
 
         if upload_session:
             upload_session.resource = layer
@@ -770,7 +776,6 @@ def file_upload(filename,
     # Assign and save the charset using the Layer class' object (layer)
     if charset != 'UTF-8':
         layer.charset = charset
-        layer.save()
 
     to_update = {}
     if defaults.get('title', title) is not None:
@@ -801,7 +806,7 @@ def file_upload(filename,
             import traceback
             tb = traceback.format_exc()
             logger.error(tb)
-
+    layer.save(notify=True)
     return layer
 
 
@@ -1016,8 +1021,8 @@ def create_thumbnail(instance, thumbnail_remote_url, thumbnail_create_url=None,
                 ogc_client = http_client
 
             if ogc_client:
+                headers = {}
                 if check_ogc_backend(geoserver.BACKEND_PACKAGE):
-                    headers = {}
                     if is_remote and thumbnail_remote_url:
                         try:
                             resp, image = ogc_client.request(
@@ -1179,14 +1184,14 @@ def create_gs_thumbnail_geonode(instance, overwrite=False, check_bbox=False):
             if bbox is None:
                 bbox = list(_bbox)
             else:
-                if bbox[0] > _bbox[0]:
-                    bbox[0] = _bbox[0]
-                if bbox[1] < _bbox[1]:
-                    bbox[1] = _bbox[1]
-                if bbox[2] > _bbox[2]:
-                    bbox[2] = _bbox[2]
-                if bbox[3] < _bbox[3]:
-                    bbox[3] = _bbox[3]
+                if float(bbox[0]) > float(_bbox[0]):
+                    bbox[0] = float(_bbox[0])
+                if float(bbox[1]) < float(_bbox[1]):
+                    bbox[1] = float(_bbox[1])
+                if float(bbox[2]) > float(_bbox[2]):
+                    bbox[2] = float(_bbox[2])
+                if float(bbox[3]) < float(_bbox[3]):
+                    bbox[3] = float(_bbox[3])
 
     wms_endpoint = getattr(ogc_server_settings, 'WMS_ENDPOINT') or 'ows'
     wms_version = getattr(ogc_server_settings, 'WMS_VERSION') or '1.1.1'

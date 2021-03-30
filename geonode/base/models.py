@@ -29,29 +29,37 @@ import logging
 import traceback
 
 from django.db import models
-from django.core import serializers
-from django.db.models import Q, signals
-from django.utils.translation import ugettext_lazy as _
-from django.core.exceptions import ValidationError
 from django.conf import settings
-from django.contrib.staticfiles.templatetags import staticfiles
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-from django.core.files.storage import default_storage as storage
-from django.core.files.base import ContentFile
-from django.contrib.gis.geos import GEOSGeometry
-from django.utils.timezone import now
+from django.core import serializers
 from django.utils.html import escape
+from django.utils.timezone import now
+from django.db.models import Q, signals
+from django.contrib.auth.models import Group
+from django.core.files.base import ContentFile
+from django.contrib.auth import get_user_model
+from django.contrib.gis.geos import GEOSGeometry
+from django.core.exceptions import ValidationError
+from django.utils.translation import ugettext_lazy as _
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.staticfiles.templatetags import staticfiles
+from django.core.files.storage import default_storage as storage
 
 from mptt.models import MPTTModel, TreeForeignKey
+
+from imagekit.models import ImageSpecField
+from imagekit.processors import ResizeToFill
 
 from polymorphic.models import PolymorphicModel
 from polymorphic.managers import PolymorphicManager
 from pinax.ratings.models import OverallRating
-from imagekit.models import ImageSpecField
-from imagekit.processors import ResizeToFill
 
+from taggit.models import TagBase, ItemBase
+from taggit.managers import TaggableManager, _TaggableManager
+
+from guardian.shortcuts import get_anonymous_user, get_objects_for_user
+from treebeard.mp_tree import MP_Node, MP_NodeQuerySet, MP_NodeManager
+
+from geonode.singleton import SingletonModel
 from geonode.base.enumerations import (
     LINK_TYPES,
     ALL_LANGUAGES,
@@ -62,11 +70,12 @@ from geonode.utils import (
     add_url_params,
     bbox_to_wkt,
     forward_mercator)
+from geonode.groups.models import GroupProfile
 from geonode.security.models import PermissionLevelMixin
-from taggit.managers import TaggableManager, _TaggableManager
-from taggit.models import TagBase, ItemBase
-from treebeard.mp_tree import MP_Node, MP_NodeQuerySet, MP_NodeManager
-
+from geonode.security.utils import get_visible_resources
+from geonode.notifications_helper import (
+    send_notification,
+    get_notification_recipients)
 from geonode.people.enumerations import ROLE_VALUES
 
 from pyproj import transform, Proj
@@ -78,6 +87,7 @@ from django.core.validators import RegexValidator
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
 
 class ContactRole(models.Model):
     """
@@ -174,42 +184,6 @@ class SpatialRepresentationType(models.Model):
     class Meta:
         ordering = ("identifier",)
         verbose_name_plural = 'Metadata Spatial Representation Types'
-
-# embrapa #
-#class Embrapa_Purpose(models.Model):
-
-    # identifier serve para saber se é ação gerencial ou projeto
-#    identifier = models.CharField(max_length=300)
-    # project_code é pra pegar o código do projeto caso for escolhido a opção projeto
-#    project_code = models.IntegerField(default=0, unique=True)
-    # title é o título do projeto, serve tanto para ação gerencial quanto para projeto
-#    title = models.TextField(default='')
-
-#    def __unicode__(self):
-#       return self.title
-
-#    def __str__(self):
-#        return self.title
-
-#    class Meta:
-#        ordering = ("title", )
-#        verbose_name_plural = 'Finalidades'
-
-#class Embrapa_Unity(models.Model):
-    # unity é a unidade da embrapa onde estão armazenados os dados correspondentes a finalidade
-#    unity = models.CharField(choices=(('1', 'um'),('2', 'dois')), max_length=20, default=settings.EMBRAPA_UNITY_DEFAULT, unique=True) #Será trocado de lugar possivelmente
-
-#    def __unicode__(self):
-#        return self.unity
-
-#    def __str__(self):
-#        return self.unity
-
-#    class Meta:
-#        ordering = ("unity",)
-#        verbose_name_plural = 'Unidades'
-        
-# O que levar pro projeto oficial:
 
 class EmbrapaKeywordQuerySet(MP_NodeQuerySet):
     """QuerySet to automatically create a root node if `depth` not given."""
@@ -320,13 +294,9 @@ class _EmbrapaTagManager(_TaggableManager):
         #print(existing)
         tag_objs.update(existing)
         for new_tag in str_tags - set(t.name for t in existing):
-            print("Tag nova?")
-            print(new_tag)
             if new_tag:
-                print("Tag nova 2")
-                print(new_tag)
-                #new_tag = escape(new_tag)
-                #tag_objs.add(Embrapa_Keywords.add_root(name=new_tag))
+                new_tag = escape(new_tag)
+                tag_objs.add(Embrapa_Keywords.add_root(name=new_tag))
 
         #print("_EmbrapaTagManager 4")
         for tag in tag_objs:
@@ -432,30 +402,14 @@ class RestrictionCodeType(models.Model):
         verbose_name_plural = 'Metadata Restriction Code Types'
 
 
-class Backup(models.Model):
-    identifier = models.CharField(max_length=255, editable=False)
-    name = models.CharField(max_length=100)
-    date = models.DateTimeField(auto_now_add=True, blank=True)
-    description = models.TextField(null=True, blank=True)
-    base_folder = models.CharField(max_length=100)
-    location = models.TextField(null=True, blank=True)
-
-    class Meta:
-        ordering = ("date", )
-        verbose_name_plural = 'Backups'
-
-
 class License(models.Model):
     identifier = models.CharField(max_length=255, editable=False)
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=255)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     url = models.URLField(max_length=2000, null=True, blank=True)
     license_text = models.TextField(null=True, blank=True)
 
-    def __unicode__(self):
-        return self.name
-    
     def __str__(self):
         return "{0}".format(self.name)
 
@@ -478,8 +432,9 @@ class License(models.Model):
             return bullets
 
     class Meta:
-        ordering = ("name", )
+        ordering = ("name",)
         verbose_name_plural = 'Licenses'
+
 
 class HierarchicalKeywordQuerySet(MP_NodeQuerySet):
     """QuerySet to automatically create a root node if `depth` not given."""
@@ -501,57 +456,70 @@ class HierarchicalKeyword(TagBase, MP_Node):
 
     objects = HierarchicalKeywordManager()
 
-    #print("HierarchicalKeyword 01:")
-    #print("Objects :")
-    #print(objects.__dict__)
-    #print("Depois de printar objects ")
-
     @classmethod
-    def dump_bulk_tree(cls, parent=None, keep_ids=True):
+    def dump_bulk_tree(cls, user, parent=None, keep_ids=True, type=None):
         """Dumps a tree branch to a python data structure."""
+        user = user or get_anonymous_user()
+        ctype_filter = [type, ] if type else ['layer', 'map', 'document']
         qset = cls._get_serializable_model().get_tree(parent)
+        if settings.SKIP_PERMS_FILTER:
+            resources = ResourceBase.objects.all()
+        else:
+            resources = get_objects_for_user(
+                user,
+                'base.view_resourcebase'
+            )
+        resources = resources.filter(
+            polymorphic_ctype__model__in=ctype_filter,
+        )
+        resources = get_visible_resources(
+            resources,
+            user,
+            admin_approval_required=settings.ADMIN_MODERATE_UPLOADS,
+            unpublished_not_visible=settings.RESOURCE_PUBLISHING,
+            private_groups_not_visibile=settings.GROUP_PRIVATE_RESOURCES)
         ret, lnk = [], {}
-        #print("HierarchicalKeyword 02:")
-        #print("qset:")
-        #print(qset)
-        #print("cls:")
-        #print(cls)
         try:
-            #print("HierarchicalKeyword 03:")
-            for pyobj in qset:
+            for pyobj in qset.order_by('name'):
                 serobj = serializers.serialize('python', [pyobj])[0]
-                #print("serobj:")
-                #print(serobj)
                 # django's serializer stores the attributes in 'fields'
                 fields = serobj['fields']
                 depth = fields['depth'] or 1
-                fields['text'] = fields['name']
-                fields['href'] = fields['slug']
-                del fields['name']
-                del fields['slug']
-                del fields['path']
-                del fields['numchild']
-                del fields['depth']
-                if 'id' in fields:
-                    # this happens immediately after a load_bulk
-                    del fields['id']
+                tags_count = 0
+                try:
+                    tags_count = TaggedContentItem.objects.filter(
+                        content_object__in=resources,
+                        tag=HierarchicalKeyword.objects.get(slug=fields['slug'])).count()
+                except Exception:
+                    pass
+                if tags_count > 0:
+                    fields['text'] = fields['name']
+                    fields['href'] = fields['slug']
+                    fields['tags'] = [tags_count]
+                    del fields['name']
+                    del fields['slug']
+                    del fields['path']
+                    del fields['numchild']
+                    del fields['depth']
+                    if 'id' in fields:
+                        # this happens immediately after a load_bulk
+                        del fields['id']
+                    newobj = {}
+                    for field in fields:
+                        newobj[field] = fields[field]
+                    if keep_ids:
+                        newobj['id'] = serobj['pk']
 
-                newobj = {}
-                for field in fields:
-                    newobj[field] = fields[field]
-                if keep_ids:
-                    newobj['id'] = serobj['pk']
-
-                if (not parent and depth == 1) or\
-                   (parent and depth == parent.depth):
-                    ret.append(newobj)
-                else:
-                    parentobj = pyobj.get_parent()
-                    parentser = lnk[parentobj.pk]
-                    if 'nodes' not in parentser:
-                        parentser['nodes'] = []
-                    parentser['nodes'].append(newobj)
-                lnk[pyobj.pk] = newobj
+                    if (not parent and depth == 1) or \
+                            (parent and depth == parent.depth):
+                        ret.append(newobj)
+                    else:
+                        parentobj = pyobj.get_parent()
+                        parentser = lnk[parentobj.pk]
+                        if 'nodes' not in parentser:
+                            parentser['nodes'] = []
+                        parentser['nodes'].append(newobj)
+                    lnk[pyobj.pk] = newobj
         except Exception:
             pass
         return ret
@@ -580,18 +548,12 @@ class _HierarchicalTagManager(_TaggableManager):
             for t in tags
             if not isinstance(t, self.through.tag_model())
         ])
-        #print("_HierarchicalTagManager 1")
-        #print(str_tags)
         tag_objs = set(tags) - str_tags
-        #print("_HierarchicalTagManager 2")
-        #print(tag_objs)
         # If str_tags has 0 elements Django actually optimizes that to not do a
         # query.  Malcolm is very smart.
         existing = self.through.tag_model().objects.filter(
             name__in=str_tags
         )
-        #print("_HierarchicalTagManager 3")
-        #print(existing)
         tag_objs.update(existing)
         for new_tag in str_tags - set(t.name for t in existing):
             if new_tag:
@@ -894,7 +856,7 @@ class ThesaurusKeywordLabel(models.Model):
     lang = models.CharField(max_length=3)
     # read from the RDF file
     label = models.CharField(max_length=255)
-#    note  = models.CharField(max_length=511)
+    # note  = models.CharField(max_length=511)
 
     keyword = models.ForeignKey('ThesaurusKeyword', related_name='keyword', on_delete=models.CASCADE)
 
@@ -958,6 +920,21 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
     """
     Base Resource Object loosely based on ISO 19115:2003
     """
+    BASE_PERMISSIONS = {
+        'read': ['view_resourcebase'],
+        'write': [
+            'change_resourcebase_metadata'
+        ],
+        'download': ['download_resourcebase'],
+        'owner': [
+            'change_resourcebase',
+            'delete_resourcebase',
+            'change_resourcebase_permissions',
+            'publish_resourcebase'
+        ]
+    }
+
+    PERMISSIONS = {}
 
     VALID_DATE_TYPES = [(x.lower(), _(x))
                         for x in ['Creation', 'Publication', 'Revision']]
@@ -965,7 +942,7 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
     date_help_text = _('reference date for the cited resource')
 
     # embrapa #
-    data_criacao_help_text = 'ano de criação do metadado'
+    data_criacao_help_text = 'ano de criacao do metadado'
     autores_help_text = 'lista de autores'
     embrapa_unity_help_text = _('Escolha a unidade da Embrapa')
     purpose_embrapa_help_text = _('Escolha a finalidade do metadado')
@@ -1010,8 +987,9 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         ' dataset')
     doi_help_text = _(
         'a DOI will be added by Admin before publication.')
-    doi = models.TextField(
+    doi = models.CharField(
         _('DOI'),
+        max_length=255,
         blank=True,
         null=True,
         help_text=doi_help_text)
@@ -1051,13 +1029,6 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         max_length=2000,
         blank=True,
         help_text=abstract_help_text)
-    #embrapa_purpose = models.ForeignKey(
-    #    Embrapa_Purpose,
-    #    null=True,
-    #    blank=True,
-    #    verbose_name=_("EmbrapaPurpose"),
-    #    help_text= purpose_embrapa_help_text,
-    #    on_delete=models.CASCADE)
     maintenance_frequency = models.CharField(
         _('maintenance frequency'),
         max_length=255,
@@ -1070,12 +1041,6 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         _('data criacao'), 
         default=now, 
         help_text=data_criacao_help_text)
-    #embrapa_autores = models.TextField(
-    #    _('Lista de Autores'), 
-    #    max_length=3000, 
-    #    blank=True, 
-    #    null=True, 
-    #    help_text=_('Lista de autores separada por virgulas'))
     caracteres = RegexValidator(
         regex=r"^[0-9]*$", 
         message=_('Permitido apenas números'), 
@@ -1093,15 +1058,10 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         blank=True, 
         null=True, 
         help_text='insira o link do visualizador da INDE - somente para CDGs publicados na INDE')
-    #embrapa_unity = models.ForeignKey(
-    #    Embrapa_Unity,
-    #    null=True,
-    #    blank=True,
-    #    help_text = embrapa_unity_help_text,
-    #    on_delete=models.CASCADE)
+
     choice_projeto_acao_gerencial = models.CharField(
-        _('Escolha uma das opções:'),
-        choices=(('Projeto','Listar Projeto'),('Ação Gerencial','Listar Ação Gerencial')), 
+        _('Escolha uma das opcoes:'),
+        choices=(('Projeto','Listar Projeto'),('Acao Gerencial','Listar Acao Gerencial')), 
         max_length=100, 
         default='Listar Projeto')
     embrapa_unity = models.CharField(
@@ -1110,12 +1070,7 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         editable=True,
         default=settings.EMBRAPA_UNITY_DEFAULT,
         help_text=embrapa_unity_help_text)
-    #embrapa_data_quality_statement = models.TextField(
-    #    _('embrapa data quality statement'),
-    #    max_length=2000,
-    #    blank=True,
-    #    null=True,
-    #    help_text=data_quality_statement_help_text)
+
     purpose = models.TextField(
         _('purpose'),
         max_length=500,
@@ -1123,13 +1078,13 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         blank=True,
         help_text=purpose_help_text)
     embrapa_data_quality_statement = TaggableManager(
-        _('Declaração da Qualidade do Dado - Fontes'), 
+        _('Declaracao da Qualidade do Dado - Fontes'), 
         through=Embrapa_Data_Quality_Statement_ResourceBase,
         blank=True,
         help_text=data_quality_statement_help_text, 
         manager= _EmbrapaDataTagManager)
     data_quality_statement = models.TextField(
-        _('Declaração da Qualidade do Dado - Descrição'),
+        _('Declaracao da Qualidade do Dado - Descricao'),
         max_length=2000,
         blank=True,
         null=True)
@@ -1180,7 +1135,7 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         License,
         null=True,
         blank=True,
-        verbose_name=_("License"), 
+        verbose_name=_("License"),
         help_text=license_help_text,
         on_delete=models.CASCADE)
     language = models.CharField(
@@ -1289,7 +1244,7 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
 
     # metadata XML specific fields
     metadata_uploaded = models.BooleanField(default=False)
-    metadata_uploaded_preserve = models.BooleanField(_('Preservação de update de metadados'), default=False)
+    metadata_uploaded_preserve = models.BooleanField(_('Preservacao de update de metadados'), default=False)
     metadata_xml = models.TextField(
         null=True,
         default='<gmd:MD_Metadata xmlns:gmd="http://www.isotc211.org/2005/gmd"/>',
@@ -1325,8 +1280,95 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         default=False,
         help_text=_('Security Rules Are Not Synched with GeoServer!'))
 
+    users_geolimits = models.ManyToManyField(
+        "UserGeoLimit",
+        related_name="users_geolimits",
+        null=True,
+        blank=True)
+
+    groups_geolimits = models.ManyToManyField(
+        "GroupGeoLimit",
+        related_name="groups_geolimits",
+        null=True,
+        blank=True)
+
+    __is_approved = None
+    __is_published = None
+
+    objects = ResourceBaseManager()
+
+    class Meta:
+        # custom permissions,
+        # add, change and delete are standard in django-guardian
+        permissions = (
+            # ('view_resourcebase', 'Can view resource'),
+            ('change_resourcebase_permissions', 'Can change resource permissions'),
+            ('download_resourcebase', 'Can download resource'),
+            ('publish_resourcebase', 'Can publish resource'),
+            ('change_resourcebase_metadata', 'Can change resource metadata'),
+        )
+
+    def __init__(self, *args, **kwargs):
+        super(ResourceBase, self).__init__(*args, **kwargs)
+        self.__is_approved = self.is_approved
+        self.__is_published = self.is_published
+
     def __str__(self):
         return "{0}".format(self.title)
+
+    def save(self, notify=False, *args, **kwargs):
+        """
+        Send a notification when a resource is created or updated
+        """
+        if hasattr(self, 'class_name') and (self.pk is None or notify):
+            if self.pk is None:
+                # Resource Created
+                notice_type_label = '%s_created' % self.class_name.lower()
+                recipients = get_notification_recipients(notice_type_label)
+                send_notification(recipients, notice_type_label, {'resource': self})
+
+            else:
+                # Resource Updated
+                _notification_sent = False
+
+                # Approval Notifications Here
+                if settings.ADMIN_MODERATE_UPLOADS:
+                    if self.is_approved and not self.is_published and \
+                    self.__is_approved != self.is_approved:
+                        notice_type_label = '%s_approved' % self.class_name.lower()
+                        recipients = get_notification_recipients(notice_type_label)
+                        send_notification(recipients, notice_type_label, {'resource': self})
+                        _notification_sent = True
+
+                # Publishing Notifications Here
+                if not _notification_sent and settings.RESOURCE_PUBLISHING:
+                    if self.is_approved and self.is_published and \
+                    self.__is_published != self.is_published:
+                        notice_type_label = '%s_published' % self.class_name.lower()
+                        recipients = get_notification_recipients(notice_type_label)
+                        send_notification(recipients, notice_type_label, {'resource': self})
+                        _notification_sent = True
+
+                # Updated Notifications Here
+                if not _notification_sent:
+                    notice_type_label = '%s_updated' % self.class_name.lower()
+                    recipients = get_notification_recipients(notice_type_label)
+                    send_notification(recipients, notice_type_label, {'resource': self})
+
+        super(ResourceBase, self).save(*args, **kwargs)
+        self.__is_approved = self.is_approved
+        self.__is_published = self.is_published
+
+    def delete(self, notify=True, *args, **kwargs):
+        """
+        Send a notification when a layer, map or document is deleted
+        """
+        if hasattr(self, 'class_name') and notify:
+            notice_type_label = '%s_deleted' % self.class_name.lower()
+            recipients = get_notification_recipients(notice_type_label)
+            send_notification(recipients, notice_type_label, {'resource': self})
+
+        super(ResourceBase, self).delete(*args, **kwargs)
 
     def get_upload_session(self):
         raise NotImplementedError()
@@ -1396,6 +1438,12 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
             llbbox[2],  # y0
             llbbox[3],  # y1
             self.srid]
+
+    @property
+    def ll_bbox_string(self):
+        """WGS84 BBOX is in the format: [x0,y0,x1,y1]."""
+        return ",".join([str(self.ll_bbox[0]), str(self.ll_bbox[2]),
+                         str(self.ll_bbox[1]), str(self.ll_bbox[3])])
 
     @property
     def bbox_string(self):
@@ -1530,27 +1578,6 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         except Exception:
             return ''
 
-    # embrapa #
-
-    @property
-    #def autores_list(self):
-        #return self.autores.split(",")
-    #def embrapa_autores_list(self):
-    #    if type(self.embrapa_autores) == "str":
-    #        return self.embrapa_autores.split(",") 
-    #    else: 
-    #        return [] 
-
-    def set_latlon_bounds(self, box):
-        """
-        Set the four bounds in lat lon projection
-        """
-        self.bbox_x0 = box[0]
-        self.bbox_x1 = box[1]
-        self.bbox_y0 = box[2]
-        self.bbox_y1 = box[3]
-
-
     def set_bounds_from_center_and_zoom(self, center_x, center_y, zoom):
         """
         Calculate zoom level and center coordinates in mercator.
@@ -1577,7 +1604,7 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
 
         # taken from http://wiki.openstreetmap.org/wiki/Zoom_levels
         # it might be not precise but enough for the purpose
-        distance_per_pixel = 40075160 * math.cos(lat) / 2**(zoom + 8)
+        distance_per_pixel = 40075160 * math.cos(lat) / 2 ** (zoom + 8)
 
         # calculate the distance from the center of the map in degrees
         # we use the calculated degree length on the x axis and the
@@ -1774,7 +1801,7 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
                             storage.path(_upload_path)
                         )
                     except Exception as e:
-                        logger.warn(e)
+                        logger.debug(e)
 
                 try:
                     # Optimize the Thumbnail size and resolution
@@ -1821,11 +1848,10 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
                     thumbnail_url=url
                 )
         except Exception as e:
-            logger.exception(e)
-            logger.error(
+            logger.debug(
                 'Error when generating the thumbnail for resource %s. (%s)' %
                 (self.id, str(e)))
-            logger.error('Check permissions for file %s.' % upload_path)
+            logger.warn('Check permissions for file %s.' % upload_path)
             Link.objects.filter(resource=self, name='Thumbnail').delete()
             _thumbnail_url = staticfiles.static(settings.MISSING_THUMBNAIL)
             obj, created = Link.objects.get_or_create(
@@ -1883,44 +1909,25 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         return [v for i, v in enumerate(
             UPDATE_FREQUENCIES) if v[0] == self.maintenance_frequency][0][1].title()
 
-    #def embrapa_data_quality_statement_title(self):
-    #    return [v for i, v in enumerate(
-    #        ('1','2')) if v[0] == self.embrapa_data_quality_statement][0][1].title()
-
     def language_title(self):
         return [v for i, v in enumerate(
             ALL_LANGUAGES) if v[0] == self.language][0][1].title()
 
     def _set_poc(self, poc):
-        # embrapa #
-        #backup_poc = []
-        #for p in poc:
-            #backup_poc += [p]
-
         # reset any poc assignation to this resource
         ContactRole.objects.filter(
             role='pointOfContact',
             resource=self).delete()
         # create the new assignation
-        
-        # embrapa #
         ContactRole.objects.create(
             role='pointOfContact',
             resource=self,
             contact=poc)
-        #for p in backup_poc:
-            #ContactRole.objects.create(role='pointOfContact', resource=self, contact=p)
 
     def _get_poc(self):
         try:
-            # embrapa #
             the_poc = ContactRole.objects.get(
                 role='pointOfContact', resource=self).contact
-            # embrapa #
-            #contacts = []
-            #for profile in ContactRole.objects.filter(role='pointOfContact', resource=self):
-                #contacts += [profile.contact]
-            #the_poc = contacts
         except ContactRole.DoesNotExist:
             the_poc = None
         return the_poc
@@ -1945,24 +1952,21 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin, ItemBase):
         return the_ma
 
     def handle_moderated_uploads(self):
-        if settings.RESOURCE_PUBLISHING or settings.ADMIN_MODERATE_UPLOADS:
-            self.is_approved = False
+        if settings.RESOURCE_PUBLISHING:
             self.is_published = False
+        if settings.ADMIN_MODERATE_UPLOADS:
+            self.is_approved = False
+
+    def add_missing_metadata_author_or_poc(self):
+        """
+        Set metadata_author and/or point of contact (poc) to a resource when any of them is missing
+        """
+        if not self.metadata_author:
+            self.metadata_author = self.owner
+        if not self.poc:
+            self.poc = self.owner
 
     metadata_author = property(_get_metadata_author, _set_metadata_author)
-
-    objects = ResourceBaseManager()
-
-    class Meta:
-        # custom permissions,
-        # add, change and delete are standard in django-guardian
-        permissions = (
-            # ('view_resourcebase', 'Can view resource'),
-            ('change_resourcebase_permissions', 'Can change resource permissions'),
-            ('download_resourcebase', 'Can download resource'),
-            ('publish_resourcebase', 'Can publish resource'),
-            ('change_resourcebase_metadata', 'Can change resource metadata'),
-        )
 
 
 class LinkManager(models.Manager):
@@ -2028,7 +2032,6 @@ class Link(models.Model):
 
 
 class MenuPlaceholder(models.Model):
-
     name = models.CharField(
         max_length=255,
         null=False,
@@ -2041,7 +2044,6 @@ class MenuPlaceholder(models.Model):
 
 
 class Menu(models.Model):
-
     title = models.CharField(
         max_length=255,
         null=False,
@@ -2068,7 +2070,6 @@ class Menu(models.Model):
 
 
 class MenuItem(models.Model):
-
     title = models.CharField(
         max_length=255,
         null=False,
@@ -2141,6 +2142,57 @@ class CuratedThumbnail(models.Model):
         except Exception as e:
             logger.exception(e)
         return self.img_thumbnail.url
+
+
+class Configuration(SingletonModel):
+    """
+    A model used for managing the Geonode instance's global configuration,
+    without a need for reloading the instance.
+
+    Usage:
+    from geonode.base.models import Configuration
+    config = Configuration.load()
+    """
+    read_only = models.BooleanField(default=False)
+    maintenance = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name_plural = 'Configuration'
+
+    def __str__(self):
+        return 'Configuration'
+
+
+class UserGeoLimit(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=False,
+        blank=False,
+        on_delete=models.CASCADE)
+    resource = models.ForeignKey(
+        ResourceBase,
+        null=False,
+        blank=False,
+        on_delete=models.CASCADE)
+    wkt = models.TextField(
+        db_column='wkt',
+        blank=True)
+
+
+class GroupGeoLimit(models.Model):
+    group = models.ForeignKey(
+        GroupProfile,
+        null=False,
+        blank=False,
+        on_delete=models.CASCADE)
+    resource = models.ForeignKey(
+        ResourceBase,
+        null=False,
+        blank=False,
+        on_delete=models.CASCADE)
+    wkt = models.TextField(
+        db_column='wkt',
+        blank=True)
 
 
 def resourcebase_post_save(instance, *args, **kwargs):

@@ -17,47 +17,10 @@
 <script type="text/javascript" src="{% static "autocomplete_light/select2.js" %}"></script>
 <script type="text/javascript" src="{% static "autocomplete_light/jquery.post-setup.js" %}"></script>
 
+<script src="{% static "geonode/js/crop_widget/crop_widget_es5.js" %}"></script>
+<link rel="stylesheet" href="{% static "geonode/css/crop_widget.css" %}">
+
 <script>
-
-function submitBtn(id){
-	var action = "{% url 'layer_metadata' layer.service_typename %}";
-	var form = document.createElement('FORM');
-	form.setAttribute('action', action);
-	form.setAttribute('method', 'GET');
-	var btn_projeto_embrapa = document.createElement('INPUT');
-	btn_projeto_embrapa.setAttribute('type','submit');
-	btn_projeto_embrapa.setAttribute('id', 'btn_projeto_embrapa');
-	btn_projeto_embrapa.setAttribute('name', 'list_projects');
-	var btn_acao_gerencial_embrapa = document.createElement('INPUT');
-	btn_acao_gerencial_embrapa.setAttribute('type','submit');
-	btn_acao_gerencial_embrapa.setAttribute('id', 'btn_acao_gerencial_embrapa');
-	btn_acao_gerencial_embrapa.setAttribute('name', 'list_management_actions');
-	form.appendChild(btn_projeto_embrapa);
-	form.appendChild(btn_acao_gerencial_embrapa);
-	console.log(id);
-	console.log(action);
-	document.body.appendChild(form);
-	if (id === 'btn_projeto_embrapa'){
-		const btnAction = document.getElementById('btn_projeto_embrapa');
-		btnAction.click();
-	}else if(id === 'btn_acao_gerencial_embrapa'){
-		const btnAction = document.getElementById('btn_acao_gerencial_embrapa');
-		btnAction.click();
-	}
-}
-
-function submitBtnAuthor(){
-  var form = document.createElement('FORM');
-  form.setAttribute('method', 'POST');
-  var button = document.createElement('INPUT');
-  button.setAttribute('type', 'submit');
-  button.setAttribute('id', 'btn_authors_embrapa');
-  button.setAttribute('name', 'saveAuthorModal');
-  form.appendChild(button);
-  document.body.appendChild(form);
-  const btnAction = document.getElementById('btn_authors_embrapa');
-  btnAction.click();
-}
 
 function save_autor() {
 
@@ -73,7 +36,7 @@ function save_autor() {
 	}
 	if ($('#id_afiliacao').val().length == 0)
 	{
-		alert('Informe a Afiliação');
+		alert('Informe a Afiliacao');
 		return;
 	}
 	if ($('#id_name').val().length > 0 &&
@@ -107,7 +70,7 @@ function save_autor() {
 function save_referencia() {
   if ($('#id_name_reference').val().length == 0)
   {
-    alert('Informe a Referência');
+    alert('Informe a Referencia');
     return;
   }
 
@@ -122,7 +85,7 @@ function save_referencia() {
         //
         $('#addingEmbrapaReferenceModal').modal('hide');
         if (JSON.parse(data).success) {
-          alert('Referência salva com sucesso!')
+          alert('Refer�ncia salva com sucesso!')
         }
         else {
           alert('Ocorreu um erro ao tentar salvar!')
@@ -140,19 +103,6 @@ function save_referencia() {
 </script>
 
 <style>
-
-.ebp-modal{
-	background: #fff;
-	padding: 16px;
-	position: fixed!important;
-	top: 50%;
-	left: 50%;
-	transform: translateX(-50%) translateY(-50%);
-	z-index: 99999;
-	border: 2px solid #f00;
-	border-radius: 8px;
-}
-
 /* general panel styles */
 #mdeditor_form .panel-group .panel{
   overflow: visible;
@@ -349,9 +299,7 @@ span.grippy::after {
   content: '.. .. .. ..';
 }
 </style>
-<button class="btn btn-success metadata-edit-done" id="btn_upd_md_done" type="submit" style="float:right; opacity: 0;" >{% trans "Done!" %}</button>
 
-{% block body_outer %}
 <ul id="md_tabs" class="nav nav-tabs">
     <li id="metadata_edit_tab" class="active">
         <a data-toggle="tab" href="#edit-metadata"><i class="fa fa-pencil"></i>{% trans "Edit" %}</a>
@@ -378,6 +326,7 @@ span.grippy::after {
     {% trans "Optional" %}
   </div>
 </div>
+
   <ul class="wizard--progress wizard--progress--medium">
       <li data-step="1" id="first" class="is-active" data-toggle="tab" href="#mandatory">
           <a>{% trans "Basic Metadata" %}</a>
@@ -471,7 +420,7 @@ span.grippy::after {
                                         {{ layer_form.scale }}
                                     </div>
 
-                                    <!-- DATA DE CRIAÇÃO - EMBRAPA -->
+                                    <!-- DATA DE CRIA��O - EMBRAPA -->
                                     <div class="col-lg-6 col-xs-12">
                                         <span><label for="{{ layer_form.data_criacao|id }}">{{ layer_form.data_criacao.label }}</label></span>
                                         <!--<p class="xxs-font-size">(When a given event occurred on the resource)</p>-->
@@ -547,14 +496,8 @@ span.grippy::after {
                                         {{ layer_form.license }}
                                     </div>
                                     <div>
-                                      <span><label
-                                          for="{{ layer_form.doi|id }}">{{ layer_form.doi.label }}</label></span>
-                                      <input id="id_resource-doi" name="resource-doi" type="text"
-                                        class="has-external-popover" data-container="body"
-                                        data-content="a DOI will be added by Admin before publication." data-html="true"
-                                        data-placement="right"
-                                        placeholder="a DOI will be added by Admin before publication."
-                                        value="{{ layer_form.doi.value }}">
+                                        <span><label for="{{ layer_form.doi|id }}">{{ layer_form.doi.label }}</label></span>
+                                        {{ layer_form.doi }}
                                     </div>
                                 </div>
                                 <div class="col-lg-4">
@@ -567,7 +510,7 @@ span.grippy::after {
                                         <!--<p class="xxs-font-size">(Brief narrative summary of the content of the resource/s)</p>-->
                                       {{ layer_form.embrapa_data_quality_statement }}
                                       </div>
-                                      <a href="#adicionar-referencia" style="margin-top: 10px;" data-toggle="modal" data-target="#addingEmbrapaReferenceModal" class="btn btn-primary">{% trans "Adicionar Referência" %}</a>
+                                      <a href="#adicionar-referencia" style="margin-top: 10px;" data-toggle="modal" data-target="#addingEmbrapaReferenceModal" class="btn btn-primary">{% trans "Adicionar Refer�ncia" %}</a>
                                         <span><label style="margin-top: 20px;" for="{{ layer_form.data_quality_statement|id }}">{{ layer_form.data_quality_statement.label }}</label></span>
                                         <!--<p class="xxs-font-size">(Brief narrative summary of the content of the resource/s)</p>-->
                                       {{ layer_form.data_quality_statement }}
@@ -585,7 +528,7 @@ span.grippy::after {
                                           <div class="modal-body">
 
                                               <div class="pure-control-group">
-                                                <label>Referência</label>
+                                                <label>Nome Referência</label>
                                                 <input id="id_name_reference" type="text">
                                               </div>
 
@@ -632,7 +575,7 @@ span.grippy::after {
                 </div>
                 <!--<div style="margin-top: 10px; padding-left: 5px; margin-bottom: 19px;">
                   <input type="radio" name="finalidade" value="lp" id="rdbListaProjetos" onclick="save_finalidade()" style="margin-right: 6px;">Listar Projetos</input>
-                  <input type="radio" name="finalidade" value="lag" id="rdbListaAcoesGerenciais" onclick="save_finalidade()" style="margin-left: 15px; margin-right: 6px;">Listar Ações Gerenciais</input>
+                  <input type="radio" name="finalidade" value="lag" id="rdbListaAcoesGerenciais" onclick="save_finalidade()" style="margin-left: 15px; margin-right: 6px;">Listar A��es Gerenciais</input>
                 </div>-->
                 <div>
                     <span><label for="{{ layer_form.choice_projeto_acao_gerencial|id }}">{{ layer_form.choice_projeto_acao_gerencial.label }}</label></span>
@@ -652,7 +595,7 @@ span.grippy::after {
                 <div style="margin-top: 10px;;">
                     <span><label for="{{ layer_form.supplemental_information|id }}">{{ layer_form.supplemental_information.label }}</label></span>
                     <!--<p class="xxs-font-size">(Any other descriptive information about the dataset)</p>-->
-                    {{ layer_form.supplemental_information }} 
+                    {{ layer_form.supplemental_information }}
                 </div>
             </div>
             <div class="col-xs-12 col-lg-5">
@@ -733,7 +676,7 @@ span.grippy::after {
                                       <input id="id_name" type="text">
                                       <label>Auditoria</label>
                                       <input id="id_autoria" type="text">
-                                      <label>Afiliação</label>
+                                      <label>Afiliacao</label>
 									                    <input id="id_afiliacao" type="text">
                                     </div>
                                     <div class="modal-footer">
@@ -776,38 +719,57 @@ span.grippy::after {
     </div>
     <div id="dataset" class="tab-pane fade">
       <div class="panel-group"><div class="panel panel-default"><div class="panel-body">
-      <div>
+        <div>
           <div style="padding: 15px">
-                      <div>
-                          {{ attribute_form.management_form }}
-                          <table class="table table-striped table-bordered table-condensed">
-                              <tr class="table-header">
-                                  <th style="width:25px;background: #efefef;"></th>
-                                  <th>{% trans "Attribute" %}</th>
-                                  <th>{% trans "Label" %}</th>
-                                  <th>{% trans "Description" %}</th>
-                                  <th>{% trans "Display Order" %}</th>
-                              </tr>
-                              {% for form in attribute_form.forms %}
-                                  {% if form.attribute %}
-                                      <tr>
-                                          <td style="width:25px;background: #efefef;"> <span class="grippy"></span></td>
-                                          <td><div style="display:none">{{form.id}}</div>{{form.attribute}}</td>
-                                          <td>{{form.attribute_label}}</td>
-                                          <td>{{form.description}}</td>
-                                          <td>{{form.display_order}}</td>
-                                      </tr>
-                                  {% endif %}
-                              {% endfor %}
-                          </table>
-                        </div>
-                  </div>
+            <div>
+                <label>{% trans "Use a custom template?" %}</label>
+                <input type="checkbox" name="resource-use_featureinfo_custom_template" class="has-external-popover"
+                  data-content="specifies wether or not use a custom GetFeatureInfo template." data-placement="right"
+                  data-container="body" data-html="true" data-toggle="toggle"
+                  placeholder="specifies wether or not use a custom GetFeatureInfo template."
+                  id="id_resource-use_featureinfo_custom_template"
+                  {% if resource.use_featureinfo_custom_template %}checked{% endif %}>
+                <div id="layer-attributes-panel"
+                  {% if resource.use_featureinfo_custom_template %}style="visibility: collapse;" {% endif %}>
+                  {{ attribute_form.management_form }}
+                  <table class="table table-striped table-bordered table-condensed">
+                      <tr class="table-header">
+                          <th style="width:25px;background: #efefef;"></th>
+                          <th>{% trans "Attribute" %}</th>
+                          <th>{% trans "Label" %}</th>
+                          <th>{% trans "Description" %}</th>
+                          <th>{% trans "Display Order" %}</th>
+                          <th>{% trans "Display Type" %}</th>
+                          <th>{% trans "Visible" %}</th>
+                      </tr>
+                      {% for form in attribute_form.forms %}
+                      {% if form.attribute %}
+                      <tr>
+                          <td style="width:25px;background: #efefef;"> <span class="grippy"></span></td>
+                          <td><div style="display:none">{{form.id}}</div>{{form.attribute}}</td>
+                          <td>{{form.attribute_label}}</td>
+                          <td>{{form.description}}</td>
+                          <td>{{form.display_order}}</td>
+                          <td>{{form.featureinfo_type}}</td>
+                          <td>{{form.visible}}</td>
+                      </tr>
+                      {% endif %}
+                      {% endfor %}
+                  </table>
+                </div>
+                <div id="layer-attributes-custom_template"
+                  {% if not resource.use_featureinfo_custom_template %}style="visibility: collapse;" {% endif %}>
+                  {{layer_form.featureinfo_custom_template}}
                 </div>
               </div>
             </div>
+          </div>
+        </div>
       </div>
     </div>
+  </div>
 </div>
+
 <div id="preview" class="tab-pane fade" style="overflow: hidden;">
     <!-- <iframe id="preview_encoder_iframe" height="100%" width="100%" style="width:0;height:0;border:0;border:none;" src="{% url 'layer_metadata_detail' resource.alternate %}"></iframe> -->
     {% if metadataxsl %}
@@ -888,5 +850,17 @@ span.grippy::after {
     </div>
 </div>
 </div>
-{% endblock %}
 
+<script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function (event) {
+    $('#id_resource-use_featureinfo_custom_template').on('change', function (event) {
+        if (this.checked) {
+          $('#layer-attributes-panel').css("visibility", "collapse");
+          $('#layer-attributes-custom_template').css("visibility", "visible");
+        } else {
+          $('#layer-attributes-panel').css("visibility", "visible");
+          $('#layer-attributes-custom_template').css("visibility", "collapse");
+        }
+    });
+  });
+</script>

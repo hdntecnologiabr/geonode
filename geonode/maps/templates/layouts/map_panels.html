@@ -60,7 +60,7 @@ function save_autor() {
   }
   if ($('#id_afiliacao').val().length == 0)
   {
-    alert('Informe a Afiliação');
+    alert('Informe a Afilia��o');
     return;
   }
   if ($('#id_name').val().length > 0 &&
@@ -94,7 +94,7 @@ function save_autor() {
 function save_referencia() {
   if ($('#id_name_reference').val().length == 0)
   {
-    alert('Informe a Referência');
+    alert('Informe a Refer�ncia');
     return;
   }
 
@@ -109,7 +109,7 @@ function save_referencia() {
         //
         $('#addingEmbrapaReferenceModal').modal('hide');
         if (JSON.parse(data).success) {
-          alert('Referência salva com sucesso!')
+          alert('Refer�ncia salva com sucesso!')
         }
         else {
           alert('Ocorreu um erro ao tentar salvar!')
@@ -324,7 +324,7 @@ span.grippy::after {
 }
 </style>
 <button class="btn btn-success metadata-edit-done" id="btn_upd_md_done" type="submit" style="float:right; opacity: 0;" >{% trans "Done!" %}</button>
-{% block body_outer %}
+
 <ul id="md_tabs" class="nav nav-tabs">
   <li id="metadata_edit_tab" class="active">
       <a data-toggle="tab" href="#edit-metadata"><i class="fa fa-pencil"></i>{% trans "Edit" %}</a>
@@ -380,8 +380,7 @@ span.grippy::after {
                                 <div class="col-lg-3">
                                     <span><label for="{{ map_form.thumbnail_url|id }}">{% trans "Thumbnail" %}</label></span>
                                     <div id="embedded_map" class="mrg-btm" style="height:250px;width: 250px;">
-                                      <div id="preview_map" style="height: 85%;width: 100%;">
-                                      </div>
+                                      <div id="preview_map" style="height: 85%;width: 100%;"></div>
                                       <div id="preview_image" style="height: 90%;width: 100%;">
                                           <img id="preview_image_src" src="{{ map_form.thumbnail_url.value }}" height="100%" width="100%"/>
                                       </div>
@@ -511,13 +510,8 @@ span.grippy::after {
                                         {{ map_form.license }}
                                     </div>
                                     <div>
-                                      <span><label for="{{ map_form.doi|id }}">{{ map_form.doi.label }}</label></span>
-                                      <input id="id_resource-doi" name="resource-doi" type="text"
-                                        class="has-external-popover" data-container="body"
-                                        data-content="a DOI will be added by Admin before publication." data-html="true"
-                                        data-placement="right"
-                                        placeholder="a DOI will be added by Admin before publication."
-                                        value="{{ map_form.doi.value }}">
+                                        <span><label for="{{ map_form.doi|id }}">{{ map_form.doi.label }}</label></span>
+                                        {{ map_form.doi }}
                                     </div>
                                 </div>
                                 <div class="col-lg-4">
@@ -548,7 +542,7 @@ span.grippy::after {
                                           <div class="modal-body">
 
                                               <div class="pure-control-group">
-                                                <label>Referência</label>
+                                                <label>Refer�ncia</label>
                                                 <input id="id_name_reference" type="text">
                                               </div>
 
@@ -594,7 +588,7 @@ span.grippy::after {
                     {{ map_form.edition }}
                 </div>
                 <!--<button type="button" onclick="submitBtn('btn_projeto_embrapa')" class="btn btn-primary">Listar Projetos</button>
-                <button type="button" onclick="submitBtn('btn_acao_gerencial_embrapa')" class="btn btn-primary">Listar Ações Gerenciais</button>-->
+                <button type="button" onclick="submitBtn('btn_acao_gerencial_embrapa')" class="btn btn-primary">Listar A��es Gerenciais</button>-->
                 <div>
                     <span><label for="{{ map_form.choice_projeto_acao_gerencial|id }}">{{ map_form.choice_projeto_acao_gerencial.label }}</label></span>
                     <!--<p class="xxs-font-size">(Brief narrative summary of the content of the resource/s)</p>-->
@@ -692,7 +686,7 @@ span.grippy::after {
                                       <input id="id_name" type="text">
                                       <label>Auditoria</label>
                                       <input id="id_autoria" type="text">
-                                      <label>Afiliação</label>
+                                      <label>Afilia��o</label>
                                       <input id="id_afiliacao" type="text">
                                     </div>
                                     <div class="modal-footer">
@@ -791,4 +785,15 @@ span.grippy::after {
     </div>
 </div>
 </div>
-{% endblock %}
+
+
+<script>
+
+  $(document).ready(function(){
+     document.getElementsByClassName('popover fade left in')[0].style.display = 'none';
+  });
+  document.querySelector("#basicDescriptiveInfo > div.col-lg-5 > div:nth-child(4) > span > label").innerText = 'Data de Publicação';
+  document.querySelector("#basicDescriptiveInfo > div.col-lg-5 > div:nth-child(6) > span > label").innerText = 'Ano de criação do conjunto de dados';
+  document.querySelector("#mdinfo > div:nth-child(1) > div:nth-child(2) > span > label").innerText = 'Declaração da Qualidade do Dado - Descrição';
+  document.querySelector("#mdinfo > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > span:nth-child(1) > label").innerText = 'Declaração da Qualidade do Dado - Fontes';
+</script>

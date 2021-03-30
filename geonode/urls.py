@@ -41,7 +41,8 @@ from geonode.base.views import thumbnail_upload
 from geonode import geoserver, qgis_server  # noqa
 from geonode.utils import check_ogc_backend
 from geonode.monitoring import register_url_event
-
+from geonode.messaging.urls import urlpatterns as msg_urls
+from .people.views import CustomSignupView
 
 admin.autodiscover()
 
@@ -81,6 +82,8 @@ urlpatterns = [
     url(r'^robots\.txt$', TemplateView.as_view(
         template_name='robots.txt'), name='robots'),
     url(r'(.*version\.txt)$', version.version, name='version'),
+    url(r'^messages/', include(msg_urls))
+
 ]
 
 urlpatterns += [
@@ -115,6 +118,7 @@ urlpatterns += [
         name='search'),
 
     # Social views
+    url(r'^account/signup/', CustomSignupView.as_view(), name='account_signup'),
     url(r"^account/", include("allauth.urls")),
     url(r'^invitations/', include(
         'geonode.invitations.urls', namespace='geonode.invitations')),
@@ -163,9 +167,13 @@ urlpatterns += [
     # Curated Thumbnail
     url(r'^base/(?P<res_id>[^/]+)/thumbnail_upload$', thumbnail_upload,
         name='thumbnail_upload'),
+
+    # tinymce WYSIWYG HTML Editor
+    url(r'^tinymce/', include('tinymce.urls')),
 ]
 
 urlpatterns += i18n_patterns(
+    url(r'^grappelli/', include('grappelli.urls')),
     url(r'^admin/', admin.site.urls, name="admin"),
 )
 
